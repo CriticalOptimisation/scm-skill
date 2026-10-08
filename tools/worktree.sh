@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Un worktree par branche (#126).
+# One worktree per branch (#126).
 #
-# Le worktree principal reste sur main ; chaque branche vit sous .worktrees/.
-# Les chemins non suivis listés dans tools/worktree.links y sont liés depuis
-# l'arbre principal. Contrat et garde-fous :
+# The main worktree stays on main; each branch lives under .worktrees/.
+# The untracked paths listed in tools/worktree.links are linked there from
+# the main worktree. Contract and safeguards:
 # .claude/skills/software-configuration-management/references/implementation-planning.md
 #
-# Codes de sortie : 0 succès ; 1 contrôle échoué ou erreur git ; 2 usage ;
-# 3 refus de sécurité.
+# Exit codes: 0 success; 1 check failed or git error; 2 usage;
+# 3 refused for safety.
 set -uo pipefail
 
 readonly E_FAIL=1 E_USAGE=2 E_REFUSED=3
@@ -18,47 +18,47 @@ readonly SELF
 say() { printf 'worktree: %s\n' "$*" >&2; }
 die() { local code=$1; shift; say "$@"; exit "$code"; }
 usage() {
-  die "$E_USAGE" "usage : worktree.sh new <type> <numéro> <description> [base]
+  die "$E_USAGE" "usage: worktree.sh new <type> <number> <description> [base]
        worktree.sh link | check | reclaim
-       worktree.sh drop <numéro>-<description>"
+       worktree.sh drop <number>-<description>"
 }
 
 toplevel() {
-  git rev-parse --show-toplevel 2>/dev/null || die "$E_FAIL" "pas dans un dépôt git"
+  git rev-parse --show-toplevel 2>/dev/null || die "$E_FAIL" "not in a git repository"
 }
 
-# « main » ou « linked ». Deux tests internes à git, jamais un chemin : les liens
-# symboliques font mentir les chemins. S'ils ne concordent pas, on s'arrête.
+# "main" or "linked". Two tests internal to git, never a path: symbolic links
+# make paths lie. If the two disagree, stop.
 checkout_kind() {
   local top gitdir common dotgit
   top=$(toplevel) || exit
-  gitdir=$(cd "$top" && realpath "$(git rev-parse --git-dir)") || die "$E_FAIL" "git rev-parse a échoué"
-  common=$(cd "$top" && realpath "$(git rev-parse --git-common-dir)") || die "$E_FAIL" "git rev-parse a échoué"
-  if [[ -f $top/.git ]]; then dotgit=fichier
-  elif [[ -d $top/.git ]]; then dotgit=répertoire
-  else dotgit=absent
+  gitdir=$(cd "$top" && realpath "$(git rev-parse --git-dir)") || die "$E_FAIL" "git rev-parse failed"
+  common=$(cd "$top" && realpath "$(git rev-parse --git-common-dir)") || die "$E_FAIL" "git rev-parse failed"
+  if [[ -f $top/.git ]]; then dotgit=file
+  elif [[ -d $top/.git ]]; then dotgit=directory
+  else dotgit=missing
   fi
-  if [[ $gitdir != "$common" && $dotgit == fichier ]]; then
+  if [[ $gitdir != "$common" && $dotgit == file ]]; then
     echo linked
-  elif [[ $gitdir == "$common" && $dotgit == répertoire ]]; then
+  elif [[ $gitdir == "$common" && $dotgit == directory ]]; then
     echo main
   else
-    die "$E_REFUSED" "détection incohérente (git-dir $gitdir, common-dir $common, .git $dotgit) — arrêt"
+    die "$E_REFUSED" "inconsistent detection (git-dir $gitdir, common-dir $common, .git $dotgit) — stopping"
   fi
 }
 
-# Racine de l'arbre principal : le parent du répertoire git commun.
+# Root of the main worktree: the parent of the common git directory.
 main_root() {
   local common
-  common=$(git rev-parse --git-common-dir) || die "$E_FAIL" "git rev-parse a échoué"
+  common=$(git rev-parse --git-common-dir) || die "$E_FAIL" "git rev-parse failed"
   dirname "$(realpath "$common")"
 }
 
-# Chemins à lier, lus dans le checkout donné : un par ligne, sans commentaire
-# ni barre finale.
+# Paths to link, read in the given checkout: one per line, without comments
+# or trailing slash.
 link_list() {
   local file=$1/tools/worktree.links line
-  [[ -f $file ]] || die "$E_FAIL" "liste absente : $file"
+  [[ -f $file ]] || die "$E_FAIL" "link list missing: $file"
   while IFS= read -r line || [[ -n $line ]]; do
     line=${line%%#*}
     line=$(sed 's/^[[:space:]]*//; s/[[:space:]]*$//' <<< "$line")
@@ -75,23 +75,23 @@ cmd_link() {
   local kind top root list p target here rel
   local -a paths=()
   kind=$(checkout_kind) || exit
-  [[ $kind == linked ]] || die "$E_REFUSED" "link refuse l'arbre principal : il y remplacerait des données par des liens"
+  [[ $kind == linked ]] || die "$E_REFUSED" "link refuses the main worktree: it would replace data with links there"
   top=$(toplevel) || exit
   root=$(main_root) || exit
   list=$(link_list "$top") || exit
   [[ -n $list ]] && mapfile -t paths <<< "$list"
 
-  # Tout valider avant d'écrire quoi que ce soit.
+  # Validate everything before writing anything.
   for p in "${paths[@]}"; do
-    safe_path "$p" || die "$E_REFUSED" "chemin refusé : $p"
+    safe_path "$p" || die "$E_REFUSED" "path refused: $p"
     git -C "$top" check-ignore -q -- "$p"
     case $? in
       0) ;;
-      1) die "$E_REFUSED" "$p n'est pas ignoré par git en tant que lien : écrire « /$p » dans .gitignore, sans barre finale" ;;
-      *) die "$E_FAIL" "git check-ignore a échoué sur $p" ;;
+      1) die "$E_REFUSED" "$p is not ignored by git as a link: write \"/$p\" in .gitignore, without a trailing slash" ;;
+      *) die "$E_FAIL" "git check-ignore failed on $p" ;;
     esac
     if [[ -e $top/$p && ! -L $top/$p ]]; then
-      die "$E_REFUSED" "$p existe dans le worktree et n'est pas un lien : rien n'est écrasé"
+      die "$E_REFUSED" "$p exists in the worktree and is not a link: nothing is overwritten"
     fi
   done
 
@@ -99,18 +99,18 @@ cmd_link() {
     target=$root/$p
     here=$top/$p
     if [[ ! -e $target ]]; then
-      say "cible absente de l'arbre principal, ignorée : $p"
+      say "target missing from the main worktree, skipped: $p"
       continue
     fi
     if [[ -L $here ]]; then
       same_target "$here" "$target" && continue
-      rm -- "$here" || die "$E_FAIL" "impossible de retirer le lien cassé : $p"
+      rm -- "$here" || die "$E_FAIL" "cannot remove broken link: $p"
     fi
-    mkdir -p -- "$(dirname -- "$here")" || die "$E_FAIL" "répertoire impossible pour $p"
+    mkdir -p -- "$(dirname -- "$here")" || die "$E_FAIL" "cannot create directory for $p"
     rel=$(realpath --relative-to="$(realpath -- "$(dirname -- "$here")")" -- "$(realpath -- "$target")") ||
-      die "$E_FAIL" "chemin relatif impossible pour $p"
-    ln -s -- "$rel" "$here" || die "$E_FAIL" "lien impossible : $p"
-    say "lié : $p"
+      die "$E_FAIL" "cannot compute relative path for $p"
+    ln -s -- "$rel" "$here" || die "$E_FAIL" "cannot link: $p"
+    say "linked: $p"
   done
 }
 
@@ -119,7 +119,7 @@ cmd_check() {
   local -a paths=()
   kind=$(checkout_kind) || exit
   if [[ $kind == main ]]; then
-    say "arbre principal : aucun lien à vérifier"
+    say "main worktree: no links to check"
     return 0
   fi
   top=$(toplevel) || exit
@@ -130,92 +130,92 @@ cmd_check() {
     target=$root/$p
     here=$top/$p
     if [[ ! -e $target ]]; then
-      say "cible absente de l'arbre principal : $p"
+      say "target missing from the main worktree: $p"
     elif ! git -C "$top" check-ignore -q -- "$p"; then
-      say "non ignoré par git : $p"; bad=1
+      say "not ignored by git: $p"; bad=1
     elif [[ ! -L $here ]]; then
-      say "lien manquant : $p"; bad=1
+      say "missing link: $p"; bad=1
     elif ! same_target "$here" "$target"; then
-      say "lien cassé ou mal dirigé : $p"; bad=1
+      say "broken or misdirected link: $p"; bad=1
     fi
   done
   (( bad == 0 )) || exit "$E_FAIL"
-  say "liens sains"
+  say "links healthy"
 }
 
 cmd_new() {
   (( $# == 3 || $# == 4 )) || usage
   local type=$1 num=$2 slug=$3 base=${4:-origin/main} root name dir branch
-  [[ " $TYPES " == *" $type "* ]] || die "$E_USAGE" "type inconnu : $type (attendu : $TYPES)"
-  [[ $num =~ ^[0-9]+$ ]] || die "$E_USAGE" "numéro invalide : $num"
-  [[ $slug =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || die "$E_USAGE" "description invalide : $slug (minuscules, chiffres, tirets)"
+  [[ " $TYPES " == *" $type "* ]] || die "$E_USAGE" "unknown type: $type (expected: $TYPES)"
+  [[ $num =~ ^[0-9]+$ ]] || die "$E_USAGE" "invalid number: $num"
+  [[ $slug =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || die "$E_USAGE" "invalid description: $slug (lowercase, digits, hyphens)"
   root=$(main_root) || exit
   name=$num-$slug
   dir=$root/.worktrees/$name
   branch=$type/$name
-  [[ -e $dir ]] && die "$E_REFUSED" "le worktree existe déjà : $dir"
-  mkdir -p -- "$root/.worktrees" || die "$E_FAIL" "impossible de créer $root/.worktrees"
+  [[ -e $dir ]] && die "$E_REFUSED" "worktree already exists: $dir"
+  mkdir -p -- "$root/.worktrees" || die "$E_FAIL" "cannot create $root/.worktrees"
   git -C "$root" check-ignore -q -- ".worktrees/$name" ||
-    die "$E_REFUSED" ".worktrees/ n'est pas ignoré par git dans l'arbre principal"
+    die "$E_REFUSED" ".worktrees/ is not ignored by git in the main worktree"
   if git -C "$root" remote get-url origin >/dev/null 2>&1; then
-    git -C "$root" fetch -q origin || die "$E_FAIL" "git fetch origin a échoué"
+    git -C "$root" fetch -q origin || die "$E_FAIL" "git fetch origin failed"
   fi
   git -C "$root" worktree add -q --no-track -b "$branch" "$dir" "$base" ||
-    die "$E_FAIL" "git worktree add a échoué"
-  say "créé : $dir, branche $branch"
+    die "$E_FAIL" "git worktree add failed"
+  say "created: $dir, branch $branch"
   (cd "$dir" && "$SELF" link)
 }
 
 cmd_reclaim() {
   local kind branch remote merge
   kind=$(checkout_kind) || exit
-  [[ $kind == main ]] || die "$E_REFUSED" "reclaim ne s'exécute que dans l'arbre principal"
+  [[ $kind == main ]] || die "$E_REFUSED" "reclaim runs only in the main worktree"
   if ! branch=$(git symbolic-ref --short -q HEAD); then
-    say "tête détachée : rien à faire"; return 0
+    say "detached HEAD: nothing to do"; return 0
   fi
   if [[ $branch == main ]]; then
-    say "déjà sur main"; return 0
+    say "already on main"; return 0
   fi
-  # La configuration, pas @{u} : quand l'amont a disparu, @{u} échoue.
+  # The configuration, not @{u}: when the upstream is gone, @{u} fails.
   if ! remote=$(git config --get "branch.$branch.remote") ||
      ! merge=$(git config --get "branch.$branch.merge"); then
-    say "$branch n'a pas d'amont : le worktree principal reste dessus"; return 0
+    say "$branch has no upstream: the main worktree stays on it"; return 0
   fi
-  git fetch -q --prune "$remote" || die "$E_FAIL" "git fetch $remote a échoué"
+  git fetch -q --prune "$remote" || die "$E_FAIL" "git fetch $remote failed"
   if git show-ref --verify -q "refs/remotes/$remote/${merge#refs/heads/}"; then
-    say "$branch existe encore sur $remote : le worktree principal reste dessus"; return 0
+    say "$branch still exists on $remote: the main worktree stays on it"; return 0
   fi
   [[ -z $(git status --porcelain) ]] ||
-    die "$E_REFUSED" "l'arbre principal porte des modifications : $branch n'est pas quittée"
-  git switch -q main || die "$E_FAIL" "git switch main a échoué"
+    die "$E_REFUSED" "the main worktree has changes: $branch is not left"
+  git switch -q main || die "$E_FAIL" "git switch main failed"
   if git show-ref --verify -q "refs/remotes/$remote/main"; then
-    git merge -q --ff-only "$remote/main" || die "$E_FAIL" "main ne peut pas avancer en avance rapide"
+    git merge -q --ff-only "$remote/main" || die "$E_FAIL" "main cannot fast-forward"
   fi
-  say "$branch a disparu de $remote : retour sur main"
+  say "$branch is gone from $remote: back on main"
 }
 
 cmd_drop() {
   (( $# == 1 )) || usage
   local name=$1 root dir top list p
   local -a paths=()
-  [[ $name =~ ^[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$ ]] || die "$E_USAGE" "nom invalide : $name"
+  [[ $name =~ ^[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$ ]] || die "$E_USAGE" "invalid name: $name"
   root=$(main_root) || exit
   dir=$root/.worktrees/$name
-  [[ -d $dir ]] || die "$E_FAIL" "worktree introuvable : $dir"
+  [[ -d $dir ]] || die "$E_FAIL" "worktree not found: $dir"
   top=$(toplevel) || exit
   [[ $(realpath -- "$top") == "$(realpath -- "$dir")" ]] &&
-    die "$E_REFUSED" "drop ne supprime pas le worktree où il s'exécute"
+    die "$E_REFUSED" "drop does not remove the worktree it runs in"
   [[ -z $(git -C "$dir" status --porcelain) ]] ||
-    die "$E_REFUSED" "$name porte des modifications : rien n'est supprimé"
-  # Les liens d'abord, et eux seuls : leurs cibles vivent dans l'arbre principal.
+    die "$E_REFUSED" "$name has changes: nothing is removed"
+  # The links first, and only them: their targets live in the main worktree.
   list=$(link_list "$dir" 2>/dev/null) || list=
   [[ -n $list ]] && mapfile -t paths <<< "$list"
   for p in "${paths[@]}"; do
     if [[ -L $dir/$p ]]; then rm -- "$dir/$p"; fi
   done
-  git -C "$root" worktree remove "$dir" || die "$E_FAIL" "git worktree remove a échoué"
+  git -C "$root" worktree remove "$dir" || die "$E_FAIL" "git worktree remove failed"
   git -C "$root" worktree prune
-  say "supprimé : $name"
+  say "removed: $name"
 }
 
 dispatch() {
