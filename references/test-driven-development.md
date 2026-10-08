@@ -12,11 +12,11 @@ This task covers branch creation, documentation updates and preliminary tests de
     - `bug` for bugs (actual behavior different from documented or desirable behavior, or documentation error, or skill/process description error)
     - `test` for issues requiring additional tests, but failing tests must be labelled `bug` if they should pass and the error appears to be in the test rather than the library
     - `doc` for issues involving only documentation but not errors (e.g., translations, etc.)
-  - From the main worktree, run `tools/worktree.sh new {type} {number} {short-description}`. It fetches `origin`, creates the branch from `origin/main`, creates the worktree `.worktrees/{number}-{short-description}`, and links the untracked paths listed in `tools/worktree.links`.
+  - From the main worktree, run `<skill>/tools/worktree.sh new {type} {number} {short-description}`, where `<skill>` is this skill's own directory (see *Paths* in `SKILL.md`), never the project root. It fetches `origin`, creates the branch from `origin/main`, creates the worktree `.worktrees/{number}-{short-description}`, and links the untracked paths listed in the project's link list.
   - **Work only inside that worktree from now on.** Never switch the branch of the main worktree: that is the maintainer's prerogative.
   - From the worktree, push the branch with its upstream (`git push -u origin HEAD`).
   - Move the issue to *In progress* on the board (see *Kanban Board* in `SKILL.md`).
-- **The script's contract** (`tools/worktree.sh`, tested by `tools/worktree.bats`):
+- **The script's contract** (`<skill>/tools/worktree.sh`, tested by `<skill>/tools/worktree.bats` and `<skill>/tools/worktree-links.bats`):
 
   | Command | Effect |
   |---|---|
@@ -26,10 +26,20 @@ This task covers branch creation, documentation updates and preliminary tests de
   | `reclaim` | in the main worktree only: if the current branch has disappeared from `origin` and the tree is clean, switches back to `main` and fast-forwards it |
   | `drop {number}-{short-description}` | removes a clean worktree and prunes; never deletes a link target |
 
+  - **The link list** is read from the checkout the script runs in:
+
+    | `tools/worktree.links` | `.worktree-links` | Result |
+    |---|---|---|
+    | present | absent | used |
+    | absent | present | used |
+    | present | present | `tools/worktree.links` is used, and every `new`, `link` and `check` warns on stderr: `warning: both tools/worktree.links and .worktree-links exist; using tools/worktree.links — remove one`. Exit status is unchanged. |
+    | absent | absent | nothing to link: `new`, `link` and `check` succeed and say `no link list: nothing to link` |
+
+    `link` and `check` say which list they read: `link list: <file>`. One path per line; `#` starts a comment; a trailing `/` is dropped.
   - **Exit status**: `0` success; `1` a check failed or git failed; `2` usage error; `3` refused for safety. Safety refusals are tested on code `3`, so that a missing script (exit `127`) can never pass them.
   - **Detection never trusts paths**, which symbolic links falsify. A worktree is linked when `git rev-parse --git-dir` differs from `--git-common-dir` (compared after `realpath`) **and** its `.git` is a file rather than a directory. If the two tests disagree, the script stops.
   - **`link` refuses the main worktree**, never overwrites a real directory, and refuses any path that git does not ignore *as a link*: the matching `.gitignore` entry must be anchored and have no trailing slash (`/poc-data`, not `poc-data/`), because git treats a symbolic link as a file.
-- **Validation**: The branch exists and is pushed, its worktree exists under `.worktrees/`, and `tools/worktree.sh check` passes inside it. The issue is *In progress*.
+- **Validation**: The branch exists and is pushed, its worktree exists under `.worktrees/`, and `<skill>/tools/worktree.sh check` passes inside it. The issue is *In progress*.
 
 ## Documentation Updates
 - **Objective**: Keep docs, comments, and AI skills aligned with the code.

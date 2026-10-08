@@ -21,3 +21,4 @@ from skill content and is not loaded into Claude's context.
 | #127 | #126  | SKILL.md, implementation-planning.md, integration.md | one worktree per branch under .worktrees/; the main worktree is the maintainer's; tools/worktree.sh links untracked data |
 | #6 | #3    | tools/worktree.sh, tools/worktree.bats | messages in English; every captured stderr asserted |
 | #8 | #2    | SKILL.md, ALL references | Kanban board in the process; branch created after plan approval (Task 4); PR when the first version is ready; one numbering (Tasks 1–6, steps named) |
+| (this PR) | #4 | SKILL.md, test-driven-development.md, integration.md, implementation.md | skill self-contained: paths through the skill's own directory; project link list in tools/worktree.links or .worktree-links (both: warning; neither: nothing to link); new-library checklist made general |
