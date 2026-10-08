@@ -294,3 +294,59 @@ teardown() {
   run git -C .worktrees/7-trial config --get branch.feature/7-trial.remote
   [ "$status" -ne 0 ]
 }
+
+@test "new rejects a non-numeric issue number" {
+  run --separate-stderr "$SCRIPT" new feature x7 trial
+  [ "$status" -eq 2 ]
+  [[ "$stderr" == *"invalid number: x7"* ]]
+}
+
+@test "check in the main worktree has nothing to check" {
+  run --separate-stderr "$SCRIPT" check
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"main worktree: no links to check"* ]]
+}
+
+@test "reclaim on main does nothing" {
+  run --separate-stderr "$SCRIPT" reclaim
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"already on main"* ]]
+}
+
+@test "reclaim leaves a branch without upstream" {
+  git switch -q -c feature/10-local
+  run --separate-stderr "$SCRIPT" reclaim
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"feature/10-local has no upstream: the main worktree stays on it"* ]]
+  [ "$(git branch --show-current)" = feature/10-local ]
+}
+
+@test "drop rejects an invalid name" {
+  run --separate-stderr "$SCRIPT" drop trial
+  [ "$status" -eq 2 ]
+  [[ "$stderr" == *"invalid name: trial"* ]]
+}
+
+@test "drop fails on a worktree that does not exist" {
+  run --separate-stderr "$SCRIPT" drop 7-trial
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"worktree not found: $MAIN/.worktrees/7-trial"* ]]
+}
+
+@test "drop refuses to remove the worktree it runs in" {
+  "$SCRIPT" new feature 7 trial
+  cd .worktrees/7-trial
+  run --separate-stderr "$SCRIPT" drop 7-trial
+  [ "$status" -eq 3 ]
+  [[ "$stderr" == *"drop does not remove the worktree it runs in"* ]]
+  [ -d "$MAIN/.worktrees/7-trial" ]
+}
+
+@test "new refuses when .worktrees is not ignored by git" {
+  printf '/data\n' > .gitignore
+  git commit -qam "no .worktrees entry"
+  run --separate-stderr "$SCRIPT" new feature 7 trial
+  [ "$status" -eq 3 ]
+  [[ "$stderr" == *".worktrees/ is not ignored by git in the main worktree"* ]]
+  [ ! -e .worktrees/7-trial ]
+}
