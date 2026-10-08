@@ -350,3 +350,8 @@ teardown() {
   [[ "$stderr" == *".worktrees/ is not ignored by git in the main worktree"* ]]
   [ ! -e .worktrees/7-trial ]
 }
+
+# --- Change History -------------------------------------------------------
+# | PR     | Summary                                                       |
+# |--------|---------------------------------------------------------------|
+# | #6     | English names; stderr asserted on every run; edge cases (#3)  |
