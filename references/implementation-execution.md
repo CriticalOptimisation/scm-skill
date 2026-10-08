@@ -4,7 +4,7 @@
 
 This segment covers documentation, testing, implementation, and code review.
 
-## Step 4: Documentation Updates
+## Documentation Updates
 - **Objective**: Keep docs, comments, and AI skills aligned with the code.
 - **Activities**:
   - Update README, Sphinx docs, skill files, or other relevant documentation.
@@ -12,7 +12,7 @@ This segment covers documentation, testing, implementation, and code review.
   - Commit the documentation changes.
 - **Validation**: Documentation builds successfully (use `sphinx-docs` when applicable).
 
-## Step 5: Tests Development
+## Tests Development
 - **Objective**: Drive the implementation with tests (where applicable).
 - **Activities**:
   - Modify or add only the configuration items explicitly approved in the assessment.
@@ -24,7 +24,7 @@ This segment covers documentation, testing, implementation, and code review.
 - **Prohibitions**: Do not alter unrelated tests or scaffolding without explicit approval.
 - **Validation**: Tests compile/run locally and reflect the intended behavior. New tests must fail at this step (use xfail if needed); a passing new test does not discriminate between old and new behaviors.
 
-## Step 6: Functionality Implementation
+## Functionality Implementation
 - **Objective**: Ensure the approved change works as intended.
 - **Activities**:
   - Apply the implementation changes following the approved design.
@@ -33,9 +33,9 @@ This segment covers documentation, testing, implementation, and code review.
   - Perform manual verification steps if required by the issue.
   - Commit the code before each validation attempt. It will be easier to manually repeat the tests, if needed, if the tested code matches a well-defined commit.
 - **Validation**: Tests pass locally and test results are documented. CI is expected to mirror the local run.
-- **Note**: Do not revisit the test design from Step 5 once Step 6 begins. Instead return to step 5 after human approval of an adequate justification if the core tests are wrong.
+- **Note**: Do not revisit the test design from *Tests Development* once *Functionality Implementation* begins. Instead return to Task 4 after human approval of an adequate justification if the core tests are wrong.
 
-## Step 7: Code Review Request
+## Code Review Request
 - **Objective**: Surface the work for maintainers' review.
 - **Activities**:
   - Open a PR with a descriptive title and body referencing the issue.

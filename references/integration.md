@@ -4,7 +4,7 @@
 
 This segment covers final integration and post-implementation validation.
 
-## Step 8: Final Integration
+## Final Integration
 - **Objective**: Let GitHub integrate the approved change after all protections pass.
 - **Activities**:
   - **Remove review scaffolding.** Delete any `REVIEW PLACEHOLDER` comments left in tests to map removed/replaced tests during review (see `test-driven-development.md`), now that the maintainer has approved. The final merged history must not carry them.
@@ -20,7 +20,7 @@ This segment covers final integration and post-implementation validation.
   - If the PR addressed multiple issues, manually close any additional referenced issues after confirming tests pass (GitHub closes at most one issue per PR).
 - **Validation**: The change merges automatically after meeting the protected branch checks, and local repo is synchronized.
 
-## Step 9: Post-Implementation Validation
+## Post-Implementation Validation
 - **Objective**: Confirm the change stabilizes in the repository.
 - **Activities**:
   - Monitor for regressions or failures triggered by the merge.

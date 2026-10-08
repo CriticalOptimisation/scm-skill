@@ -4,7 +4,7 @@
 
 This task covers branch creation, documentation updates and preliminary tests definition.
 
-## Step 3: Branch and Worktree Creation
+## Branch and Worktree Creation
 - **Objective**: Create an isolated workspace for the approved plan, without touching the main worktree. The branch is needed to commit the preliminary tests and check that they fail before the implementation starts.
 - **Activities**:
   - Choose the branch name `{type}/{number}-{short-description}`, where {type} is:
@@ -31,7 +31,7 @@ This task covers branch creation, documentation updates and preliminary tests de
   - **`link` refuses the main worktree**, never overwrites a real directory, and refuses any path that git does not ignore *as a link*: the matching `.gitignore` entry must be anchored and have no trailing slash (`/poc-data`, not `poc-data/`), because git treats a symbolic link as a file.
 - **Validation**: The branch exists and is pushed, its worktree exists under `.worktrees/`, and `tools/worktree.sh check` passes inside it. The issue is *In progress*.
 
-## Step 4: Documentation Updates
+## Documentation Updates
 - **Objective**: Keep docs, comments, and AI skills aligned with the code.
 - **Activities**:
   - Update README, Sphinx docs, skill files, or other relevant documentation.
