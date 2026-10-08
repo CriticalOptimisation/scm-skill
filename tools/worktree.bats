@@ -1,8 +1,10 @@
 #!/usr/bin/env bats
-# Contrat de tools/worktree.sh (#126).
+# Contract of tools/worktree.sh (#126).
 #
-# Chaque test monte un dépôt jetable avec son dépôt distant nu : rien ne touche le
-# dépôt réel. Le script lit la liste de liens du worktree où il s'exécute.
+# Each test sets up a throwaway repository with its bare remote: nothing touches
+# the real repository. The script reads the link list of the worktree it runs in.
+
+bats_require_minimum_version 1.5.0
 
 setup() {
   SCRIPT="$BATS_TEST_DIRNAME/worktree.sh"
@@ -29,239 +31,266 @@ teardown() {
   rm -rf "$TMP"
 }
 
-# --- contrat général -------------------------------------------------------
+# --- general contract ------------------------------------------------------
 #
-# Codes de sortie : 0 succès ; 1 contrôle échoué ou erreur git ; 2 usage ;
-# 3 refus de sécurité. Les refus sont testés sur le code 3, pour qu'un script
-# absent — qui sort en 127 — ne les fasse jamais passer.
+# Exit codes: 0 success; 1 check failed or git error; 2 usage; 3 refused for
+# safety. Refusals are tested on code 3, so that a missing script — which exits
+# with 127 — can never pass them.
 
-@test "le script existe et est exécutable" {
+@test "the script exists and is executable" {
   [ -x "$SCRIPT" ]
 }
 
-@test "une sous-commande inconnue sort avec le code d'usage" {
-  run "$SCRIPT" inconnue
+@test "an unknown subcommand exits with the usage code" {
+  run --separate-stderr "$SCRIPT" unknown
   [ "$status" -eq 2 ]
+  [[ "$stderr" == *"usage: worktree.sh new <type> <number> <description> [base]"* ]]
 }
 
 # --- new -------------------------------------------------------------------
 
-@test "new crée la branche et son worktree sous .worktrees, liens posés" {
-  run "$SCRIPT" new feature 7 essai
+@test "new creates the branch and its worktree under .worktrees, links in place" {
+  run --separate-stderr "$SCRIPT" new feature 7 trial
   [ "$status" -eq 0 ]
-  [ -d .worktrees/7-essai ]
-  [ "$(git -C .worktrees/7-essai branch --show-current)" = "feature/7-essai" ]
-  [ -L .worktrees/7-essai/data ]
-  [ "$(readlink -f .worktrees/7-essai/data)" = "$(readlink -f "$MAIN/data")" ]
+  [[ "$stderr" == *"created: $MAIN/.worktrees/7-trial, branch feature/7-trial"* ]]
+  [[ "$stderr" == *"linked: data"* ]]
+  [ -d .worktrees/7-trial ]
+  [ "$(git -C .worktrees/7-trial branch --show-current)" = "feature/7-trial" ]
+  [ -L .worktrees/7-trial/data ]
+  [ "$(readlink -f .worktrees/7-trial/data)" = "$(readlink -f "$MAIN/data")" ]
 }
 
-@test "new laisse un worktree propre : le lien est ignoré par git" {
-  "$SCRIPT" new feature 7 essai
-  [ -z "$(git -C .worktrees/7-essai status --porcelain)" ]
+@test "new leaves a clean worktree: the link is ignored by git" {
+  "$SCRIPT" new feature 7 trial
+  [ -z "$(git -C .worktrees/7-trial status --porcelain)" ]
 }
 
 # --- link ------------------------------------------------------------------
 
-@test "link est idempotente dans un worktree" {
-  "$SCRIPT" new feature 7 essai
-  cd .worktrees/7-essai
-  run "$SCRIPT" link
+@test "link is idempotent in a worktree" {
+  "$SCRIPT" new feature 7 trial
+  cd .worktrees/7-trial
+  run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 0 ]
-  run "$SCRIPT" link
+  [ -z "$stderr" ]
+  run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
   [ "$(readlink -f data)" = "$(readlink -f "$MAIN/data")" ]
 }
 
-@test "link répare un lien supprimé" {
-  "$SCRIPT" new feature 7 essai
-  cd .worktrees/7-essai
+@test "link repairs a deleted link" {
+  "$SCRIPT" new feature 7 trial
+  cd .worktrees/7-trial
   rm data
-  run "$SCRIPT" link
+  run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 0 ]
+  [[ "$stderr" == *"linked: data"* ]]
   [ -L data ]
 }
 
-@test "link refuse l'arbre principal et n'y touche à rien" {
-  run "$SCRIPT" link
+@test "link refuses the main worktree and touches nothing there" {
+  run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 3 ]
+  [[ "$stderr" == *"link refuses the main worktree: it would replace data with links there"* ]]
   [ -d data ]
   [ ! -L data ]
   [ "$(cat data/f)" = secret ]
 }
 
-@test "link refuse l'arbre principal même atteint par un lien symbolique" {
+@test "link refuses the main worktree even when reached through a symbolic link" {
   ln -s "$MAIN" "$TMP/alias-main"
   cd "$TMP/alias-main"
-  run "$SCRIPT" link
+  run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 3 ]
+  [[ "$stderr" == *"link refuses the main worktree"* ]]
   [ ! -L "$MAIN/data" ]
 }
 
-@test "link reconnaît un worktree atteint par un lien symbolique" {
-  "$SCRIPT" new feature 7 essai
-  ln -s "$MAIN/.worktrees/7-essai" "$TMP/alias-wt"
+@test "link recognises a worktree reached through a symbolic link" {
+  "$SCRIPT" new feature 7 trial
+  ln -s "$MAIN/.worktrees/7-trial" "$TMP/alias-wt"
   cd "$TMP/alias-wt"
-  run "$SCRIPT" link
+  run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
 }
 
-@test "link n'écrase jamais un vrai répertoire" {
-  "$SCRIPT" new feature 7 essai
-  cd .worktrees/7-essai
+@test "link never overwrites a real directory" {
+  "$SCRIPT" new feature 7 trial
+  cd .worktrees/7-trial
   rm data
   mkdir data
   echo local > data/g
-  run "$SCRIPT" link
+  run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 3 ]
+  [[ "$stderr" == *"data exists in the worktree and is not a link: nothing is overwritten"* ]]
   [ ! -L data ]
   [ "$(cat data/g)" = local ]
 }
 
-@test "link refuse un chemin que git n'ignore pas" {
-  "$SCRIPT" new feature 7 essai
-  cd .worktrees/7-essai
-  printf 'data\nsuivi\n' > tools/worktree.links
-  mkdir "$MAIN/suivi"
-  run "$SCRIPT" link
+@test "link refuses a path that git does not ignore" {
+  "$SCRIPT" new feature 7 trial
+  cd .worktrees/7-trial
+  printf 'data\ntracked\n' > tools/worktree.links
+  mkdir "$MAIN/tracked"
+  run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 3 ]
-  [ ! -e suivi ]
+  [[ "$stderr" == *'tracked is not ignored by git as a link: write "/tracked" in .gitignore, without a trailing slash'* ]]
+  [ ! -e tracked ]
 }
 
-@test "link refuse un motif à barre finale, qui n'ignore pas un lien" {
+@test "link refuses a pattern with a trailing slash, which does not ignore a link" {
   printf 'data/\n/.worktrees/\n' > .gitignore
-  git commit -qam "motif à barre finale"
+  git commit -qam "pattern with a trailing slash"
   git push -q
-  run "$SCRIPT" new feature 7 essai
+  run --separate-stderr "$SCRIPT" new feature 7 trial
   [ "$status" -eq 3 ]
-  [ ! -L .worktrees/7-essai/data ]
+  [[ "$stderr" == *'data is not ignored by git as a link: write "/data" in .gitignore, without a trailing slash'* ]]
+  [ ! -L .worktrees/7-trial/data ]
 }
 
 # --- check -----------------------------------------------------------------
 
-@test "check réussit sur des liens sains et échoue sur un lien cassé" {
-  "$SCRIPT" new feature 7 essai
-  cd .worktrees/7-essai
-  run "$SCRIPT" check
+@test "check succeeds on healthy links and fails on a broken link" {
+  "$SCRIPT" new feature 7 trial
+  cd .worktrees/7-trial
+  run --separate-stderr "$SCRIPT" check
   [ "$status" -eq 0 ]
+  [[ "$stderr" == *"links healthy"* ]]
   rm data
-  ln -s "$TMP/nulle-part" data
-  run "$SCRIPT" check
+  ln -s "$TMP/nowhere" data
+  run --separate-stderr "$SCRIPT" check
   [ "$status" -eq 1 ]
+  [[ "$stderr" == *"broken or misdirected link: data"* ]]
 }
 
-@test "check ne modifie rien" {
-  "$SCRIPT" new feature 7 essai
-  cd .worktrees/7-essai
+@test "check changes nothing" {
+  "$SCRIPT" new feature 7 trial
+  cd .worktrees/7-trial
   rm data
-  run "$SCRIPT" check
+  run --separate-stderr "$SCRIPT" check
   [ "$status" -eq 1 ]
+  [[ "$stderr" == *"missing link: data"* ]]
   [ ! -e data ]
 }
 
 # --- reclaim ---------------------------------------------------------------
 
-@test "reclaim ramène l'arbre principal sur main quand sa branche a disparu du distant" {
-  git switch -q -c feature/8-fusionnee
-  git commit -q --allow-empty -m travail
-  git push -q -u origin feature/8-fusionnee
-  git push -q origin --delete feature/8-fusionnee
-  run "$SCRIPT" reclaim
+@test "reclaim brings the main worktree back to main when its branch is gone from the remote" {
+  git switch -q -c feature/8-merged
+  git commit -q --allow-empty -m work
+  git push -q -u origin feature/8-merged
+  git push -q origin --delete feature/8-merged
+  run --separate-stderr "$SCRIPT" reclaim
   [ "$status" -eq 0 ]
+  [[ "$stderr" == *"feature/8-merged is gone from origin: back on main"* ]]
   [ "$(git branch --show-current)" = main ]
 }
 
-@test "reclaim laisse une branche encore présente sur le distant" {
-  git switch -q -c feature/9-en-cours
-  git push -q -u origin feature/9-en-cours
-  run "$SCRIPT" reclaim
+@test "reclaim leaves a branch still present on the remote" {
+  git switch -q -c feature/9-ongoing
+  git push -q -u origin feature/9-ongoing
+  run --separate-stderr "$SCRIPT" reclaim
   [ "$status" -eq 0 ]
-  [ "$(git branch --show-current)" = feature/9-en-cours ]
+  [[ "$stderr" == *"feature/9-ongoing still exists on origin: the main worktree stays on it"* ]]
+  [ "$(git branch --show-current)" = feature/9-ongoing ]
 }
 
-@test "reclaim refuse de basculer un arbre principal modifié" {
-  git switch -q -c feature/8-fusionnee
-  git push -q -u origin feature/8-fusionnee
-  git push -q origin --delete feature/8-fusionnee
-  echo modification >> .gitignore
-  run "$SCRIPT" reclaim
+@test "reclaim refuses to switch a modified main worktree" {
+  git switch -q -c feature/8-merged
+  git push -q -u origin feature/8-merged
+  git push -q origin --delete feature/8-merged
+  echo change >> .gitignore
+  run --separate-stderr "$SCRIPT" reclaim
   [ "$status" -eq 3 ]
-  [ "$(git branch --show-current)" = feature/8-fusionnee ]
+  [[ "$stderr" == *"the main worktree has changes: feature/8-merged is not left"* ]]
+  [ "$(git branch --show-current)" = feature/8-merged ]
 }
 
-@test "reclaim refuse de s'exécuter dans un worktree lié" {
-  "$SCRIPT" new feature 7 essai
-  cd .worktrees/7-essai
-  run "$SCRIPT" reclaim
+@test "reclaim refuses to run in a linked worktree" {
+  "$SCRIPT" new feature 7 trial
+  cd .worktrees/7-trial
+  run --separate-stderr "$SCRIPT" reclaim
   [ "$status" -eq 3 ]
+  [[ "$stderr" == *"reclaim runs only in the main worktree"* ]]
 }
 
 # --- drop ------------------------------------------------------------------
 
-@test "drop supprime un worktree propre et élague" {
-  "$SCRIPT" new feature 7 essai
-  run "$SCRIPT" drop 7-essai
+@test "drop removes a clean worktree and prunes" {
+  "$SCRIPT" new feature 7 trial
+  run --separate-stderr "$SCRIPT" drop 7-trial
   [ "$status" -eq 0 ]
-  [ ! -e .worktrees/7-essai ]
-  [ -z "$(git worktree list | grep 7-essai)" ]
+  [[ "$stderr" == *"removed: 7-trial"* ]]
+  [ ! -e .worktrees/7-trial ]
+  [ -z "$(git worktree list | grep 7-trial)" ]
 }
 
-@test "drop refuse un worktree qui porte des modifications" {
-  "$SCRIPT" new feature 7 essai
-  echo x > .worktrees/7-essai/nouveau.txt
-  run "$SCRIPT" drop 7-essai
+@test "drop refuses a worktree that carries changes" {
+  "$SCRIPT" new feature 7 trial
+  echo x > .worktrees/7-trial/new.txt
+  run --separate-stderr "$SCRIPT" drop 7-trial
   [ "$status" -eq 3 ]
-  [ -d .worktrees/7-essai ]
+  [[ "$stderr" == *"7-trial has changes: nothing is removed"* ]]
+  [ -d .worktrees/7-trial ]
 }
 
-@test "drop n'efface jamais la cible d'un lien" {
-  "$SCRIPT" new feature 7 essai
-  "$SCRIPT" drop 7-essai
+@test "drop never deletes the target of a link" {
+  "$SCRIPT" new feature 7 trial
+  "$SCRIPT" drop 7-trial
   [ "$(cat "$MAIN/data/f")" = secret ]
 }
 
-# --- cas limites -----------------------------------------------------------
+# --- edge cases ------------------------------------------------------------
 
-@test "link ignore une cible absente de l'arbre principal" {
-  printf '/data\n/absent\n/.worktrees/\n' > .gitignore
-  printf 'data\nabsent\n' > tools/worktree.links
-  git commit -qam "cible absente"
+@test "link skips a target missing from the main worktree" {
+  printf '/data\n/missing\n/.worktrees/\n' > .gitignore
+  printf 'data\nmissing\n' > tools/worktree.links
+  git commit -qam "missing target"
   git push -q
-  run "$SCRIPT" new feature 7 essai
+  run --separate-stderr "$SCRIPT" new feature 7 trial
   [ "$status" -eq 0 ]
-  [ ! -e .worktrees/7-essai/absent ]
-  [ -L .worktrees/7-essai/data ]
+  [[ "$stderr" == *"target missing from the main worktree, skipped: missing"* ]]
+  [[ "$stderr" == *"linked: data"* ]]
+  [ ! -e .worktrees/7-trial/missing ]
+  [ -L .worktrees/7-trial/data ]
 }
 
-@test "link lie un chemin imbriqué sous un répertoire suivi" {
+@test "link links a path nested under a tracked directory" {
   mkdir -p site
-  echo suivi > site/page
+  echo tracked > site/page
   printf '/data\n/site/cache\n/.worktrees/\n' > .gitignore
   printf 'data\nsite/cache\n' > tools/worktree.links
   git add site/page .gitignore tools/worktree.links
-  git commit -qm "chemin imbriqué"
+  git commit -qm "nested path"
   git push -q
   mkdir site/cache
-  run "$SCRIPT" new feature 7 essai
+  run --separate-stderr "$SCRIPT" new feature 7 trial
   [ "$status" -eq 0 ]
-  [ "$(readlink -f .worktrees/7-essai/site/cache)" = "$(readlink -f "$MAIN/site/cache")" ]
-  [ -z "$(git -C .worktrees/7-essai status --porcelain)" ]
+  [[ "$stderr" == *"linked: site/cache"* ]]
+  [ "$(readlink -f .worktrees/7-trial/site/cache)" = "$(readlink -f "$MAIN/site/cache")" ]
+  [ -z "$(git -C .worktrees/7-trial status --porcelain)" ]
 }
 
-@test "new refuse un worktree déjà présent" {
-  "$SCRIPT" new feature 7 essai
-  run "$SCRIPT" new bug 7 essai
+@test "new refuses an existing worktree" {
+  "$SCRIPT" new feature 7 trial
+  run --separate-stderr "$SCRIPT" new bug 7 trial
   [ "$status" -eq 3 ]
+  [[ "$stderr" == *"worktree already exists: $MAIN/.worktrees/7-trial"* ]]
 }
 
-@test "new rejette un type ou une description invalides" {
-  run "$SCRIPT" new chantier 7 essai
+@test "new rejects an invalid type or description" {
+  run --separate-stderr "$SCRIPT" new project 7 trial
   [ "$status" -eq 2 ]
-  run "$SCRIPT" new feature 7 "Essai Accentué"
+  [[ "$stderr" == *"unknown type: project (expected: feature bug test doc)"* ]]
+  run --separate-stderr "$SCRIPT" new feature 7 "Accented Trïal"
   [ "$status" -eq 2 ]
+  [[ "$stderr" == *"invalid description: Accented Trïal (lowercase, digits, hyphens)"* ]]
 }
 
-@test "new ne suit pas origin/main : la branche n'a pas d'amont avant son push" {
-  "$SCRIPT" new feature 7 essai
-  run git -C .worktrees/7-essai config --get branch.feature/7-essai.remote
+@test "new does not track origin/main: the branch has no upstream before its push" {
+  "$SCRIPT" new feature 7 trial
+  run git -C .worktrees/7-trial config --get branch.feature/7-trial.remote
   [ "$status" -ne 0 ]
 }
