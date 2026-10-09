@@ -185,3 +185,8 @@ core_drop_keeps_targets() {
   has_line "$stderr" "$NO_LIST"
   [ -z "$(find "$WT" -path "$WT/.git" -prune -o -type l -print)" ]
 }
+
+# --- Change History -------------------------------------------------------
+# | PR     | Summary                                                       |
+# |--------|---------------------------------------------------------------|
+# | (this PR) | where the project's link list is found (#4)               |
