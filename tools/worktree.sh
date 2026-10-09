@@ -256,5 +256,5 @@ dispatch "$@"
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #6     | messages and comments in English (#3)                         |
-# | (this PR) | link list in tools/worktree.links or .worktree-links (#4)   |
-# | (this PR) | a list ending in a comment or blank line no longer fails (#4) |
+# | #9     | link list in tools/worktree.links or .worktree-links (#4)     |
+# | #9     | a list ending in a comment or blank line no longer fails (#4) |

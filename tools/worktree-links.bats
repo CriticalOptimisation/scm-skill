@@ -228,4 +228,4 @@ core_drop_keeps_targets() {
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
-# | (this PR) | where the project's link list is found (#4)               |
+# | #9     | where the project's link list is found (#4)                   |

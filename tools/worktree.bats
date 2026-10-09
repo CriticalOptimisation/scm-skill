@@ -355,4 +355,4 @@ teardown() {
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #6     | English names; stderr asserted on every run; edge cases (#3)  |
-# | (this PR) | clean link runs print exactly the list line (#4)          |
+# | #9     | clean link runs print exactly the list line (#4)              |
