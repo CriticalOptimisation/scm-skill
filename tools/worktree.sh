@@ -2,9 +2,9 @@
 # One worktree per branch (#126).
 #
 # The main worktree stays on main; each branch lives under .worktrees/.
-# The untracked paths listed in tools/worktree.links are linked there from
-# the main worktree. Contract and safeguards:
-# .claude/skills/software-configuration-management/references/implementation-planning.md
+# The untracked paths listed in the project's link list (tools/worktree.links,
+# else .worktree-links) are linked there from the main worktree. Contract and
+# safeguards: the skill's references/test-driven-development.md.
 #
 # Exit codes: 0 success; 1 check failed or git error; 2 usage;
 # 3 refused for safety.
@@ -54,11 +54,29 @@ main_root() {
   dirname "$(realpath "$common")"
 }
 
+# Name of the link list in the given checkout: tools/worktree.links, else
+# .worktree-links; nothing if neither exists. Warns when both do.
+list_file() {
+  if [[ -f $1/tools/worktree.links ]]; then
+    [[ -f $1/.worktree-links ]] &&
+      say "warning: both tools/worktree.links and .worktree-links exist; using tools/worktree.links — remove one"
+    echo tools/worktree.links
+  elif [[ -f $1/.worktree-links ]]; then
+    echo .worktree-links
+  fi
+}
+
 # Paths to link, read in the given checkout: one per line, without comments
-# or trailing slash.
+# or trailing slash. No list: nothing to link.
 link_list() {
-  local file=$1/tools/worktree.links line
-  [[ -f $file ]] || die "$E_FAIL" "link list missing: $file"
+  local name file line
+  name=$(list_file "$1")
+  if [[ -z $name ]]; then
+    say "no link list: nothing to link"
+    return 0
+  fi
+  say "link list: $name"
+  file=$1/$name
   while IFS= read -r line || [[ -n $line ]]; do
     line=${line%%#*}
     line=$(sed 's/^[[:space:]]*//; s/[[:space:]]*$//' <<< "$line")
@@ -238,3 +256,4 @@ dispatch "$@"
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #6     | messages and comments in English (#3)                         |
+# | (this PR) | link list in tools/worktree.links or .worktree-links (#4)   |
