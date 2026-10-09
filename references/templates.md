@@ -65,7 +65,7 @@ Brief description of changes
 - [ ] Manual testing completed
 
 ## Related Issues
-Closes #123   <!-- mandatory: links the PR to its issue for the board workflows -->
+Closes #123   <!-- mandatory: links the PR to its issue; the issue card carries the review state -->
 Related to #456
 
 ## Checklist

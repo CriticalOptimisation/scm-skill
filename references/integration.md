@@ -27,6 +27,6 @@ This segment covers final integration and post-implementation validation.
   - Confirm that change history entries are present and accurate in all files modified by the PR, and that `history.md` files are present in all skill directories touched by the PR.
   - Update release notes or communication channels if required.
   - Confirm that `git worktree list` no longer shows the branch worktree and that the main worktree is on `main`.
-  - Confirm on the board that the PR and the issue are *Done* and that the issue is closed (see *Kanban Board* in `SKILL.md`). An issue is never reopened: a follow-up is a new issue.
+  - Confirm on the board that the issue is *Done* and closed; if the PR was a reopened one, its card is *Done* too (see *Kanban Board* in `SKILL.md`). An issue is never reopened: a follow-up is a new issue.
 - **Completion**: Issue is marked resolved and all follow-ups addressed.
 - **Note**: GitHub will automatically close the associated issue and may delete the branch upon successful merge. The remaining actions are local: return the main worktree to `main` if needed, drop the branch worktree, and synchronize.
