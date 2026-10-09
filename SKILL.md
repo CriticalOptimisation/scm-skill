@@ -17,7 +17,7 @@ This skill keeps the surface area small: it helps you decide whether you are man
 3. **Implementation Planning** – Trigger this task on an issue after approval in Task 2. Precondition: Task 2 completed with approval. Perform Detailed Planning and record the plan in the issue. No branch is created and no git-tracked file changes in this task. Do not proceed to other tasks without approval of the detailed plan.
 4. **Test Driven Development** – Trigger this task after detailed plan validation in Task 3. Precondition: Task 3 completed with validated plan. Start by creating the branch and its worktree and moving the issue to *In progress*. Perform Documentation, Preliminary Tests Definition steps, commit the preliminary tests on their own and record that they fail against the unchanged code, then confirm that the documentation builds properly and is in strict adherence to the detailed plan. Confirm that the preliminary tests are a straightforward illustration of the documented behavior and correct if needed, post the branch compare link in the issue, then **stop**. Do not proceed without approval on the documentation and the preliminary tests.
 5. **Implementation** – Trigger this task after documentation and preliminary tests in Task 4 have been approved. Perform Source code Implementation, Edge-cases Tests Expansion, Testing, and Prepare for Review steps **in that order**. Finally, when the first version is ready for review, create the PR (`Closes #N`, auto-merge enabled), and update the source code until the PR automated tests pass or until you discover an inconsistency in the tests. Ask permission to return to Task 4 if needed. Follow the formal review process of the PR and make updates as directed by the maintainers.
-6. **Integration** – Trigger this task after review approval in Task 5. Precondition: Task 5 completed with maintainer review approval. Perform Final Integration and Validation until GitHub automatically merges the branch into `main` and deletes the remote branch. Evaluate new commits to main that must be integrated via rebase, final testing using the whole test suite, checking the tests status on the GitHub PR, local repository resynchronization after the merge (squash and merge). Verify that the PR and the issue reached *Done* and that the issue is closed. All edits must be minimal and justified at this stage.
+6. **Integration** – Trigger this task after review approval in Task 5. Precondition: Task 5 completed with maintainer review approval. Perform Final Integration and Validation until GitHub automatically merges the branch into `main` and deletes the remote branch. Evaluate new commits to main that must be integrated via rebase, final testing using the whole test suite, checking the tests status on the GitHub PR, local repository resynchronization after the merge (squash and merge). Verify that the issue reached *Done* and is closed. All edits must be minimal and justified at this stage.
 
 ## Meta-task Guidance
 
@@ -41,7 +41,7 @@ Several sessions may work on the same clone at the same time. A branch switch in
 
 ## Kanban Board
 
-The maintainer steers from the project board. Workflows of the board make most moves; the session makes only the moves no workflow can make, and verifies the others.
+The maintainer steers from the project board. Workflows of the board make most moves; the session makes only the moves no workflow can make, and verifies the others. **Only issues have cards**: a PR shows on its issue's card through the `Closes #N` link. The one exception is a reopened PR (see *Events outside the task sequence*).
 
 - **Finding the board**: the board of an issue is in the issue's own `projectItems`, since the board's auto-add workflow puts every new issue there. Cross-check it with the *Kanban* line of the repository's *Session bootstrap* issue. If there is no board, more than one, or the two disagree: **stop and ask the maintainer**.
 - **Moves along the tasks** (the end of a task is the start of the next one):
@@ -52,19 +52,24 @@ The maintainer steers from the project board. Workflows of the board make most m
   | 2. Shared Issue Understanding | — | — | *Session*: assessment approved, issue → **Ready**. |
   | 3. Implementation Planning | — | — | — |
   | 4. Test Driven Development | *Session*: creates the branch and worktree, issue → **In progress**. | — | — |
-  | 5. Implementation | — | First version ready for review. *Session*: opens the PR with `Closes #N` and runs `gh pr merge --auto --squash`. *Workflows*: PR linked to the issue → **In review**. *Session*: verifies the PR is *In review* and the issue *In progress*. | *Maintainer*: approves. *GitHub*: auto-merges. |
-  | 6. Integration | *Workflows*: PR merged and issue closed → both **Done**. *Session*: verifies both cards and that the issue is closed. | — | — |
+  | 5. Implementation | — | First version ready for review. *Session*: opens the PR with `Closes #N` and runs `gh pr merge --auto --squash`. *Workflows*: PR linked to the issue → issue **In review**. *Session*: verifies the issue is *In review* and that no PR card was added. | *Maintainer*: approves. *GitHub*: auto-merges. |
+  | 6. Integration | *Workflows*: PR merged and issue closed → issue **Done**. *Session*: verifies the card and that the issue is closed. | — | — |
 
-- **Events outside the task sequence** (workflows; the session only checks them): a reopened PR → **In review**; old **Done** items are archived. An issue is never reopened.
-- **Checks at the start of every task**: an issue is never *In review*; a PR is only *In review* or *Done*; a PR in *In review* has its issue *In progress*; an **open issue in *Done*** means the maintainer stopped the work — stop, ask for the reason, record it on the issue, and close it (`completed` or `not planned`) once confirmed. Meta-tasks run the same checks on every open issue and PR of the repository. If a workflow did not fire, report it rather than move the card by hand.
+- **Events outside the task sequence**:
+  - *Session*: **a reopened PR** — a PR is reopened when its issue has not changed but the implementation needs rework. The session that reopens it adds it to the board (`gh project item-add`) and sets it to **In review** (`gh project item-edit`); no workflow is relied on. It is the only kind of PR card allowed. At merge it goes to **Done**: if no workflow moved it, the session moves it in Task 6.
+  - *Workflows*: old **Done** items are archived.
+  - An issue is never reopened.
+- **Checks at the start of every task**: an issue is *In review* only while it has an open linked PR; an issue with an open linked PR is *In review*; a PR card exists only for a reopened PR, *In review* while open, then *Done*; an **open issue in *Done*** means the maintainer stopped the work — stop, ask for the reason, record it on the issue, and close it (`completed` or `not planned`) once confirmed. Meta-tasks run the same checks on every open issue and PR of the repository. If a workflow did not fire, report it rather than move the card by hand.
 - **Commands** (IDs are looked up by name each time, never hard-coded):
   ```sh
-  # Status and item of every open issue and PR of the repository
+  # Every open issue with its open linked PRs and its card; every open PR with its reopen count and its card (expected: none, unless reopened)
   gh api graphql -F o=OWNER -F r=REPO -f query='query($o:String!,$r:String!){repository(owner:$o,name:$r){
-    issues(states:OPEN,first:100){nodes{number projectItems(first:5){nodes{id project{id number} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}
-    pullRequests(states:OPEN,first:100){nodes{number projectItems(first:5){nodes{id project{id number} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}'
+    issues(states:OPEN,first:100){nodes{number closedByPullRequestsReferences(first:5,includeClosedPrs:false){nodes{number}} projectItems(first:5){nodes{id project{id number} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}
+    pullRequests(states:OPEN,first:100){nodes{number timelineItems(itemTypes:[REOPENED_EVENT]){totalCount} projectItems(first:5){nodes{id project{id number} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}'
   # Status field and option IDs of board P
   gh project field-list P --owner OWNER --format json --jq '.fields[]|select(.name=="Status")|.id as $f|.options[]|"\($f) \(.id) \(.name)"'
+  # Add a reopened PR to board P (prints the new item ID)
+  gh project item-add P --owner OWNER --url PR_URL --format json --jq .id
   # Move a card
   gh project item-edit --id ITEM_ID --project-id PROJECT_ID --field-id FIELD_ID --single-select-option-id OPTION_ID
   ```
