@@ -14,8 +14,8 @@ This segment covers final integration and post-implementation validation.
   - Update dependent issues or TODOs if applicable.
   - After GitHub merges and deletes the remote branch, from the main worktree:
     1. `git fetch --prune origin`;
-    2. `tools/worktree.sh reclaim` — brings the main worktree back to `main` if the maintainer had left it on the merged branch, and does nothing otherwise;
-    3. `tools/worktree.sh drop {number}-{short-description}` — removes the branch worktree;
+    2. `<skill>/tools/worktree.sh reclaim` (`<skill>` is this skill's own directory, see *Paths* in `SKILL.md`) — brings the main worktree back to `main` if the maintainer had left it on the merged branch, and does nothing otherwise;
+    3. `<skill>/tools/worktree.sh drop {number}-{short-description}` — removes the branch worktree;
     4. delete the local branch (`git branch -D`), since a squash merge leaves it unmerged in git's eyes.
   - If the PR addressed multiple issues, manually close any additional referenced issues after confirming tests pass (GitHub closes at most one issue per PR).
 - **Validation**: The change merges automatically after meeting the protected branch checks, and local repo is synchronized.

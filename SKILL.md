@@ -24,13 +24,18 @@ This skill keeps the surface area small: it helps you decide whether you are man
 - Confirm you are operating on a clean baseline (`git fetch origin && git status`) before performing any meta-task.
 - Route lightweight branch/tag housekeeping through this skill's meta-task guidance; only enter the implementation path when configuration work is both scoped and approved.
 
+## Paths: the skill and the project
+
+Projects **link** this skill rather than copy it, so it may sit anywhere. In this skill, `<skill>/…` is a path inside the skill's own directory: the *Base directory for this skill* that Claude Code announces when it loads the skill. Never look for these files at the project root. Every other path is relative to the root of the project you work on. Project-specific configuration lives in the project, never in the skill.
+
 ## Worktrees and Parallel Sessions
 
 Several sessions may work on the same clone at the same time. A branch switch in a shared tree changes files under every other session, so branches never share a tree.
 
 - **The main worktree stays on `main`, and switching its branch is the maintainer's prerogative.** No session ever checks out another branch there. The maintainer may open a branch in the main worktree to look at it; Task 6 brings it back to `main` after the merge.
-- **Every branch lives in its own worktree**, under `.worktrees/{number}-{short-description}` at the root of the main worktree. The directory is ignored by git. Create it with `tools/worktree.sh new` (Task 4), never by hand.
-- **Untracked data does not follow a worktree.** Client data, local analyses and generated files exist only in the main worktree. `tools/worktree.sh` links the paths listed in `tools/worktree.links` into each worktree; never copy them. Run `tools/worktree.sh check` before any step that reads them.
+- **Every branch lives in its own worktree**, under `.worktrees/{number}-{short-description}` at the root of the main worktree. The directory is ignored by git. Create it with `<skill>/tools/worktree.sh new` (Task 4), never by hand. The project's `.gitignore` must ignore `/.worktrees/`.
+- **Untracked data does not follow a worktree.** Client data, local analyses and generated files exist only in the main worktree. `<skill>/tools/worktree.sh` links the paths listed in the project's **link list** into each worktree; never copy them. Run `<skill>/tools/worktree.sh check` before any step that reads them.
+- **The link list** is a project file: `tools/worktree.links`, or else `.worktree-links` at the project root. If both exist, the script uses `tools/worktree.links` and warns on every run until one is removed. If neither exists, there is nothing to link, and that is not an error. Each run names the list it read.
 - **One session per worktree.** `git fetch` works from anywhere; commit, rebase and push only from your own worktree.
 - **In VS Code**, worktrees appear as separate repositories in the *Source Control Repositories* view (`git.detectWorktrees` is set in `.vscode/settings.json`). *Open Worktree in New Window* gives a simultaneous view of the project; *in Current Window* switches as a branch would.
 
@@ -70,13 +75,13 @@ When handling issues, use the `github-issues` skill for execution but follow SCM
 
 1. **Determine action**: Decide if the task is issue creation, update, query, or other housekeeping.
 2. **Gather context**: Review repo details, existing labels/milestones, and any related issues.
-3. **Structure content**: Always use the custom templates from `.claude/skills/software-configuration-management/references/templates.md`, which are tailored for this repository and override any generic templates in the `github-issues` skill.
+3. **Structure content**: Always use the custom templates from `<skill>/references/templates.md`, which are tailored for this repository and override any generic templates in the `github-issues` skill.
 4. **Execute**: Call the appropriate MCP tool or `gh` command via the `github-issues` skill.
 5. **Confirm**: Verify the result on GitHub and ensure the action aligns with meta-task rules.
 
 ## Implementation Workflow Summary
 
-Companion reference files under `.claude/skills/software-configuration-management/references/` contain full details:
+Companion reference files under `<skill>/references/` contain full details:
 
 - `shared-issue-understanding.md` — Task 2: Issue Assessment & Approval
 - `implementation-planning.md` — Task 3: Detailed Planning

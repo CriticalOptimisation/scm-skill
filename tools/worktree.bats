@@ -72,10 +72,10 @@ teardown() {
   cd .worktrees/7-trial
   run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 0 ]
-  [ -z "$stderr" ]
+  [ "$stderr" = "worktree: link list: tools/worktree.links" ]
   run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 0 ]
-  [ -z "$stderr" ]
+  [ "$stderr" = "worktree: link list: tools/worktree.links" ]
   [ "$(readlink -f data)" = "$(readlink -f "$MAIN/data")" ]
 }
 
@@ -113,7 +113,7 @@ teardown() {
   cd "$TMP/alias-wt"
   run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 0 ]
-  [ -z "$stderr" ]
+  [ "$stderr" = "worktree: link list: tools/worktree.links" ]
 }
 
 @test "link never overwrites a real directory" {
@@ -355,3 +355,4 @@ teardown() {
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #6     | English names; stderr asserted on every run; edge cases (#3)  |
+# | #9     | clean link runs print exactly the list line (#4)              |

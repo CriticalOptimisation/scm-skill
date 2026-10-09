@@ -33,12 +33,14 @@ This task covers source code implementation, edge-cases tests expansion, testing
 - **Objective**: Surface the work for maintainers' review.
 - **Activities**:
   - Update the change history section of every file modified by this PR, following the templates in `templates.md`. For skill files, update the skill directory's `history.md` instead of the skill file itself. Use `gh api repos/{owner}/{repo}/pulls/{n}/files` to confirm the exact set of changed files — do not rely on `git log`.
-  - **New library checklist** — when a PR introduces a new library (a new `.sh` file in `config/`), verify all of the following are present before opening the PR:
-    - `docs/libraries/<name>.rst` — Sphinx documentation
-    - `test/test-<name>.bats` — test suite
-    - `.claude/commands/<name>.md` — Claude skill command file
-    - `.claude/commands/<name>/history.md` — skill change-history file
-    - Structural tests in `test/test-file-structure.bats` covering all four companion files above and the library `.sh` itself (last code line NOT `return 0`, change history block present).
+  - **New library or public API checklist** — when a PR introduces a new library or a new public API, verify before opening the PR that it ships with:
+    1. reference documentation;
+    2. a test suite;
+    3. a skill, or a section of an existing skill, telling Claude how to use it correctly;
+    4. that skill's `history.md`;
+    5. structural tests that fail if any of these companions is missing.
+
+    Where each of these lives is a project convention, stated in the project's bootstrap issue.
   - Open a PR with a descriptive title and body referencing the issue.
   - Open the PR when the first version is ready for review, not earlier. Its body carries `Closes #N` for the issue: this links the PR to the issue, so the board workflows add the PR in *In review* and GitHub closes the issue at merge.
   - Enable auto-merge right away (`gh pr merge --auto --squash`): the maintainer's approving review then triggers the merge.
