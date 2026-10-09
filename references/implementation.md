@@ -40,6 +40,9 @@ This task covers source code implementation, edge-cases tests expansion, testing
     - `.claude/commands/<name>/history.md` — skill change-history file
     - Structural tests in `test/test-file-structure.bats` covering all four companion files above and the library `.sh` itself (last code line NOT `return 0`, change history block present).
   - Open a PR with a descriptive title and body referencing the issue.
+  - Open the PR when the first version is ready for review, not earlier. Its body carries `Closes #N` for the issue: this links the PR to the issue, so the board workflows add the PR in *In review* and GitHub closes the issue at merge.
+  - Enable auto-merge right away (`gh pr merge --auto --squash`): the maintainer's approving review then triggers the merge.
+  - Verify on the board that the PR is *In review* and the issue *In progress* (see *Kanban Board* in `SKILL.md`).
   - Assign the **maintainers team** as reviewers (@CriticalOptimisation/maintainers).
   - Link the original issue and summarize the changes.
   - Address review feedback iteratively.
