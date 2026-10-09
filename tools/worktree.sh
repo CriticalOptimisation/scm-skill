@@ -81,7 +81,7 @@ link_list() {
     line=${line%%#*}
     line=$(sed 's/^[[:space:]]*//; s/[[:space:]]*$//' <<< "$line")
     line=${line%/}
-    [[ -n $line ]] && printf '%s\n' "$line"
+    if [[ -n $line ]]; then printf '%s\n' "$line"; fi
   done < "$file"
 }
 
@@ -257,3 +257,4 @@ dispatch "$@"
 # |--------|---------------------------------------------------------------|
 # | #6     | messages and comments in English (#3)                         |
 # | (this PR) | link list in tools/worktree.links or .worktree-links (#4)   |
+# | (this PR) | a list ending in a comment or blank line no longer fails (#4) |

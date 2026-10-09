@@ -186,6 +186,45 @@ core_drop_keeps_targets() {
   [ -z "$(find "$WT" -path "$WT/.git" -prune -o -type l -print)" ]
 }
 
+# --- edge cases --------------------------------------------------------------
+
+@test "no list: drop removes the worktree and says only that" {
+  "$SCRIPT" new feature 7 try
+  run --separate-stderr "$SCRIPT" drop 7-try
+  [ "$status" -eq 0 ]
+  [ "$stderr" = "worktree: removed: 7-try" ]
+  [ ! -e "$WT" ]
+}
+
+@test "both lists: drop does not warn, and keeps the targets" {
+  write_list "$TOOLS_LIST" data
+  write_list "$ROOT_LIST" other
+  "$SCRIPT" new feature 7 try
+  run --separate-stderr "$SCRIPT" drop 7-try
+  [ "$status" -eq 0 ]
+  [ "$stderr" = "worktree: removed: 7-try" ]
+  [ "$(cat "$MAIN/data/f")" = secret ]
+  [ "$(cat "$MAIN/other/f")" = other ]
+}
+
+@test ".worktree-links: comments and trailing slashes are read as in tools/worktree.links" {
+  write_list "$ROOT_LIST" "# untracked data" "data/   # with a comment" ""
+  run --separate-stderr "$SCRIPT" new feature 7 try
+  [ "$status" -eq 0 ]
+  has_line "$stderr" "$(list_line "$ROOT_LIST")"
+  has_line "$stderr" "worktree: linked: data"
+  [ "$(readlink -f "$WT/data")" = "$(readlink -f "$MAIN/data")" ]
+}
+
+@test ".worktree-links with only comments: named, nothing linked, no error" {
+  write_list "$ROOT_LIST" "# nothing yet"
+  run --separate-stderr "$SCRIPT" new feature 7 try
+  [ "$status" -eq 0 ]
+  has_line "$stderr" "$(list_line "$ROOT_LIST")"
+  ! has_line "$stderr" "$NO_LIST" || false
+  [ -z "$(find "$WT" -path "$WT/.git" -prune -o -type l -print)" ]
+}
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
