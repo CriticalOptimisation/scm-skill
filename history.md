@@ -20,3 +20,4 @@ from skill content and is not loaded into Claude's context.
 | #145 | #143  | test-driven-development.md, implementation.md, integration.md | assert captured stderr; REVIEW PLACEHOLDER for replaced tests + integration cleanup |
 | #127 | #126  | SKILL.md, implementation-planning.md, integration.md | one worktree per branch under .worktrees/; the main worktree is the maintainer's; tools/worktree.sh links untracked data |
 | #6 | #3    | tools/worktree.sh, tools/worktree.bats | messages in English; every captured stderr asserted |
+| #8 | #2    | SKILL.md, ALL references | Kanban board in the process; branch created after plan approval (Task 4); PR when the first version is ready; one numbering (Tasks 1–6, steps named) |
