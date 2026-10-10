@@ -22,6 +22,8 @@ readonly BOTH_WARNING="worktree: warning: both tools/worktree.links and .worktre
 readonly NO_LIST="worktree: no link list: nothing to link"
 
 setup() {
+  # Never open the throwaway worktrees in the VS Code window running the suite (#7).
+  unset VSCODE_IPC_HOOK_CLI
   SCRIPT="$BATS_TEST_DIRNAME/worktree.sh"
   TMP="$(mktemp -d)"
   ORIGIN="$TMP/origin.git"

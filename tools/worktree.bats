@@ -7,6 +7,8 @@
 bats_require_minimum_version 1.5.0
 
 setup() {
+  # Never open the throwaway worktrees in the VS Code window running the suite (#7).
+  unset VSCODE_IPC_HOOK_CLI
   SCRIPT="$BATS_TEST_DIRNAME/worktree.sh"
   TMP="$(mktemp -d)"
   ORIGIN="$TMP/origin.git"
