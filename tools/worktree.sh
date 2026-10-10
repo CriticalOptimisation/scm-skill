@@ -6,6 +6,10 @@
 # else .worktree-links) are linked there from the main worktree. Contract and
 # safeguards: the skill's references/test-driven-development.md.
 #
+# VS Code does not see a worktree created by a process other than its own
+# terminals; in a session started from VS Code, new opens the worktree's .git
+# file there so that VS Code lists it (#7).
+#
 # Exit codes: 0 success; 1 check failed or git error; 2 usage;
 # 3 refused for safety.
 set -uo pipefail

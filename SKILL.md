@@ -38,6 +38,7 @@ Several sessions may work on the same clone at the same time. A branch switch in
 - **The link list** is a project file: `tools/worktree.links`, or else `.worktree-links` at the project root. If both exist, the script uses `tools/worktree.links` and warns on every run until one is removed. If neither exists, there is nothing to link, and that is not an error. Each run names the list it read.
 - **One session per worktree.** `git fetch` works from anywhere; commit, rebase and push only from your own worktree.
 - **In VS Code**, worktrees appear as separate repositories in the *Source Control Repositories* view (`git.detectWorktrees` is set in `.vscode/settings.json`). *Open Worktree in New Window* gives a simultaneous view of the project; *in Current Window* switches as a branch would.
+- **VS Code does not see the session's git commands.** It detects a new worktree when the command runs in one of its own terminals, but the session's shell is not one: it is a process of the Claude Code extension. So `worktree.sh new` opens the new worktree's `.git` file in the session's window (`code -r`), which makes VS Code add the worktree to *Source Control Repositories*; a one-line tab stays open. VS Code notices a removed worktree by itself, so `drop` does nothing for it. Outside VS Code — a plain terminal, a cloud session — the step is skipped: the script runs it only when `VSCODE_IPC_HOOK_CLI` is set and `code` is on the `PATH`, so it reaches the session's own window and never starts VS Code or picks another window.
 
 ## Kanban Board
 
