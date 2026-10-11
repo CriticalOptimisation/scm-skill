@@ -165,6 +165,18 @@ cmd_check() {
   say "links healthy"
 }
 
+# In a session started from VS Code, opens the worktree's .git file in that
+# window: VS Code then lists the worktree. Never fails.
+vscode_show() {
+  local file=$1/.git
+  [[ -n ${VSCODE_IPC_HOOK_CLI-} ]] && command -v code >/dev/null || return 0
+  if code -r "$file" >/dev/null 2>&1; then
+    say "opened in VS Code: $file"
+  else
+    say "warning: VS Code could not open $file; reload the window to list the worktree in Source Control Repositories"
+  fi
+}
+
 cmd_new() {
   (( $# == 3 || $# == 4 )) || usage
   local type=$1 num=$2 slug=$3 base=${4:-origin/main} root name dir branch
@@ -185,7 +197,8 @@ cmd_new() {
   git -C "$root" worktree add -q --no-track -b "$branch" "$dir" "$base" ||
     die "$E_FAIL" "git worktree add failed"
   say "created: $dir, branch $branch"
-  (cd "$dir" && "$SELF" link)
+  (cd "$dir" && "$SELF" link) || exit
+  vscode_show "$dir"
 }
 
 cmd_reclaim() {
@@ -262,3 +275,4 @@ dispatch "$@"
 # | #6     | messages and comments in English (#3)                         |
 # | #9     | link list in tools/worktree.links or .worktree-links (#4)     |
 # | #9     | a list ending in a comment or blank line no longer fails (#4) |
+# | #TBD   | new opens the worktree's .git in VS Code so it is listed (#7) |
