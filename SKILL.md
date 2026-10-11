@@ -66,7 +66,7 @@ The maintainer steers from the project board. Workflows of the board make most m
   # Every open issue with its open linked PRs and its card; every open PR with its reopen count and its card (expected: none, unless reopened)
   gh api graphql -F o=OWNER -F r=REPO -f query='query($o:String!,$r:String!){repository(owner:$o,name:$r){
     issues(states:OPEN,first:100){nodes{number closedByPullRequestsReferences(first:5,includeClosedPrs:false){nodes{number}} projectItems(first:5){nodes{id project{id number} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}
-    pullRequests(states:OPEN,first:100){nodes{number timelineItems(itemTypes:[REOPENED_EVENT]){totalCount} projectItems(first:5){nodes{id project{id number} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}'
+    pullRequests(states:OPEN,first:100){nodes{number timelineItems(first:1,itemTypes:[REOPENED_EVENT]){filteredCount} projectItems(first:5){nodes{id project{id number} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}'
   # Status field and option IDs of board P
   gh project field-list P --owner OWNER --format json --jq '.fields[]|select(.name=="Status")|.id as $f|.options[]|"\($f) \(.id) \(.name)"'
   # Add a reopened PR to board P (prints the new item ID)
