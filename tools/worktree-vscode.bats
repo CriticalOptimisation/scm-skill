@@ -40,6 +40,7 @@ setup() {
   cat > "$STUB_DIR/code" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$#" "$@" >> "$CODE_LOG"
+if [[ -n ${CODE_NOISE-} ]]; then echo "code says hello"; echo "code complains" >&2; fi
 exit "${CODE_STATUS:-0}"
 STUB
   chmod +x "$STUB_DIR/code"
@@ -190,4 +191,57 @@ code_not_called() {
   stderr_is "worktree: removed: 7-trial"
   code_not_called
   [ ! -e "$WT" ]
+}
+
+# --- edge cases ------------------------------------------------------------
+
+@test "an empty VSCODE_IPC_HOOK_CLI counts as outside VS Code" {
+  export VSCODE_IPC_HOOK_CLI=
+  with_stub
+  run_script new feature 7 trial
+  [ "$status" -eq 0 ]
+  code_not_called
+  stderr_is "${CREATED[@]}"
+}
+
+@test "what code prints never reaches the script's output" {
+  in_vscode
+  with_stub
+  export CODE_NOISE=1
+  run_script new feature 7 trial
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  code_called_with -r "$WT/.git"
+  stderr_is "${CREATED[@]}" "worktree: opened in VS Code: $WT/.git"
+}
+
+@test "a path with spaces reaches code as one argument" {
+  local clone="$TMP/my repo"
+  git clone -q "$ORIGIN" "$clone"
+  mkdir "$clone/data"
+  cd "$clone"
+  in_vscode
+  with_stub
+  run_script new feature 7 trial
+  [ "$status" -eq 0 ]
+  code_called_with -r "$clone/.worktrees/7-trial/.git"
+  stderr_is "worktree: created: $clone/.worktrees/7-trial, branch feature/7-trial" \
+    "worktree: link list: tools/worktree.links" \
+    "worktree: linked: data" \
+    "worktree: opened in VS Code: $clone/.worktrees/7-trial/.git"
+}
+
+@test "when linking fails, new keeps its exit code and does not call code" {
+  printf 'other\n' > tools/worktree.links
+  git commit -qam "list a path git does not ignore"
+  git push -q
+  mkdir other
+  in_vscode
+  with_stub
+  run_script new feature 7 trial
+  [ "$status" -eq 3 ]
+  code_not_called
+  stderr_is "worktree: created: $WT, branch feature/7-trial" \
+    "worktree: link list: tools/worktree.links" \
+    'worktree: other is not ignored by git as a link: write "/other" in .gitignore, without a trailing slash'
 }
