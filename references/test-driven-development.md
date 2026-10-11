@@ -12,7 +12,7 @@ This task covers branch creation, documentation updates and preliminary tests de
     - `bug` for bugs (actual behavior different from documented or desirable behavior, or documentation error, or skill/process description error)
     - `test` for issues requiring additional tests, but failing tests must be labelled `bug` if they should pass and the error appears to be in the test rather than the library
     - `doc` for issues involving only documentation but not errors (e.g., translations, etc.)
-  - From the main worktree, run `<skill>/tools/worktree.sh new {type} {number} {short-description}`, where `<skill>` is this skill's own directory (see *Paths* in `SKILL.md`), never the project root. It fetches `origin`, creates the branch from `origin/main`, creates the worktree `.worktrees/{number}-{short-description}`, and links the untracked paths listed in the project's link list.
+  - From the main worktree, run `<skill>/tools/worktree.sh new {type} {number} {short-description}`, where `<skill>` is this skill's own directory (see *Paths* in `SKILL.md`), never the project root. It fetches `origin`, creates the branch from `origin/main`, creates the worktree `.worktrees/{number}-{short-description}`, links the untracked paths listed in the project's link list, and, in a session started from VS Code, opens the worktree's `.git` file so that VS Code shows the worktree in *Source Control Repositories* (see *Worktrees and Parallel Sessions* in `SKILL.md`).
   - **Work only inside that worktree from now on.** Never switch the branch of the main worktree: that is the maintainer's prerogative.
   - From the worktree, push the branch with its upstream (`git push -u origin HEAD`).
   - Move the issue to *In progress* on the board (see *Kanban Board* in `SKILL.md`).
@@ -20,7 +20,7 @@ This task covers branch creation, documentation updates and preliminary tests de
 
   | Command | Effect |
   |---|---|
-  | `new {type} {number} {short-description} [base]` | branch + worktree under `.worktrees/`, links posed; `base` defaults to `origin/main` |
+  | `new {type} {number} {short-description} [base]` | branch + worktree under `.worktrees/`, links posed; `base` defaults to `origin/main`; then the VS Code step below |
   | `link` | creates or repairs the links of the current worktree; idempotent |
   | `check` | verifies the links; changes nothing; exits non-zero on a missing or broken link |
   | `reclaim` | in the main worktree only: if the current branch has disappeared from `origin` and the tree is clean, switches back to `main` and fast-forwards it |
@@ -36,6 +36,7 @@ This task covers branch creation, documentation updates and preliminary tests de
     | absent | absent | nothing to link: `new`, `link` and `check` succeed and say `no link list: nothing to link` |
 
     `link` and `check` say which list they read: `link list: <file>`. One path per line; `#` starts a comment; a trailing `/` is dropped.
+  - **The VS Code step** of `new` runs only when `VSCODE_IPC_HOOK_CLI` is set and `code` is on the `PATH`; otherwise it is skipped without a message. It runs `code -r <worktree>/.git` and says `opened in VS Code: <worktree>/.git`. If `code` fails, `new` warns `warning: VS Code could not open <worktree>/.git; reload the window to list the worktree in Source Control Repositories` and still succeeds: the worktree and its links are kept. A refused or failed `new` never calls `code`, and `drop` never does.
   - **Exit status**: `0` success; `1` a check failed or git failed; `2` usage error; `3` refused for safety. Safety refusals are tested on code `3`, so that a missing script (exit `127`) can never pass them.
   - **Detection never trusts paths**, which symbolic links falsify. A worktree is linked when `git rev-parse --git-dir` differs from `--git-common-dir` (compared after `realpath`) **and** its `.git` is a file rather than a directory. If the two tests disagree, the script stops.
   - **`link` refuses the main worktree**, never overwrites a real directory, and refuses any path that git does not ignore *as a link*: the matching `.gitignore` entry must be anchored and have no trailing slash (`/poc-data`, not `poc-data/`), because git treats a symbolic link as a file.
