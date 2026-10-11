@@ -275,4 +275,4 @@ dispatch "$@"
 # | #6     | messages and comments in English (#3)                         |
 # | #9     | link list in tools/worktree.links or .worktree-links (#4)     |
 # | #9     | a list ending in a comment or blank line no longer fails (#4) |
-# | #TBD   | new opens the worktree's .git in VS Code so it is listed (#7) |
+# | #12    | new opens the worktree's .git in VS Code so it is listed (#7) |

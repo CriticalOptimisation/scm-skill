@@ -231,3 +231,4 @@ core_drop_keeps_targets() {
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #9     | where the project's link list is found (#4)                   |
+# | #12    | never opens VS Code: VSCODE_IPC_HOOK_CLI unset (#7)           |

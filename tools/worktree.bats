@@ -358,3 +358,4 @@ teardown() {
 # |--------|---------------------------------------------------------------|
 # | #6     | English names; stderr asserted on every run; edge cases (#3)  |
 # | #9     | clean link runs print exactly the list line (#4)              |
+# | #12    | never opens VS Code: VSCODE_IPC_HOOK_CLI unset (#7)           |
