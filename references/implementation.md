@@ -31,8 +31,7 @@ This task covers source code implementation, edge-cases tests expansion, testing
 
 ## Prepare for Review
 - **Objective**: Surface the work for maintainers' review.
-- **Activities**:
-  - Update the change history section of every file modified by this PR, following the templates in `templates.md`. For skill files, update the skill directory's `history.md` instead of the skill file itself. Use `gh api repos/{owner}/{repo}/pulls/{n}/files` to confirm the exact set of changed files — do not rely on `git log`.
+- **Activities**, in this order:
   - **New library or public API checklist** — when a PR introduces a new library or a new public API, verify before opening the PR that it ships with:
     1. reference documentation;
     2. a test suite;
@@ -41,11 +40,11 @@ This task covers source code implementation, edge-cases tests expansion, testing
     5. structural tests that fail if any of these companions is missing.
 
     Where each of these lives is a project convention, stated in the project's bootstrap issue.
-  - Open a PR with a descriptive title and body referencing the issue.
-  - Open the PR when the first version is ready for review, not earlier. Its body carries `Closes #N` for the issue: this links the PR to the issue, so the board workflows move the **issue** to *In review* and GitHub closes it at merge. The PR gets no card.
-  - Enable auto-merge right away (`gh pr merge --auto --squash`): the maintainer's approving review then triggers the merge.
+  - Open the PR when the first version is ready for review, not earlier, with a descriptive title and a body referencing the issue. Its body carries `Closes #N` for the issue: this links the PR to the issue, so the board workflows move the **issue** to *In review* and GitHub closes it at merge. The PR gets no card.
+  - Now that the PR number is known, update the change history section of every file modified by this PR, following the templates in `templates.md`: the *Change History* block of each file, and, for skill files, the skill directory's `history.md` instead of the skill file itself. Use `gh api repos/{owner}/{repo}/pulls/{n}/files` to confirm the exact set of changed files — do not rely on `git log`. Commit and push.
+  - Once the history commit is pushed, enable auto-merge (`gh pr merge --auto --squash`): the maintainer's approving review then triggers the merge.
+  - Assign the **maintainers team** as reviewers (@CriticalOptimisation/maintainers). This request is the signal that the PR is ready for review, so it comes after the history commit and auto-merge.
   - Verify on the board that the issue is *In review* and that no PR card was added (see *Kanban Board* in `SKILL.md`).
-  - Assign the **maintainers team** as reviewers (@CriticalOptimisation/maintainers).
   - Link the original issue and summarize the changes.
   - Address review feedback iteratively.
 - **Validation**: The pull request shows an approved review from a maintainer in GitHub (check the 'Reviews' tab; conversation resolution alone is insufficient).
