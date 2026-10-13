@@ -113,6 +113,83 @@ teardown() {
   [ "$(readlink .claude/agents/probe.md)" = "$TMP/other.md" ]
 }
 
+# --- edge cases -----------------------------------------------------------
+
+@test "link refuses extra or unknown arguments" {
+  run --separate-stderr "$SCRIPT" link --bogus
+  [ "$status" -eq 2 ]
+  [[ "$stderr" == *"usage: agents.sh link [--user]"* ]]
+  run --separate-stderr "$SCRIPT" link --user extra
+  [ "$status" -eq 2 ]
+  [[ "$stderr" == *"usage: agents.sh link [--user]"* ]]
+  [ ! -e .claude ]
+}
+
+@test "link outside a git repository fails in project mode" {
+  mkdir "$TMP/plain"
+  cd "$TMP/plain"
+  run --separate-stderr "$SCRIPT" link
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"not in a git repository"* ]]
+  [ ! -e .claude ]
+}
+
+@test "link --user works outside a git repository" {
+  mkdir "$TMP/plain"
+  cd "$TMP/plain"
+  run --separate-stderr "$SCRIPT" link --user
+  [ "$status" -eq 0 ]
+  [ "$stderr" = "agents: linked: $HOME/.claude/agents/probe.md" ]
+  [ -L "$HOME/.claude/agents/probe.md" ]
+}
+
+@test "link fails when the skill ships no agent definitions" {
+  rm "$SKILL/agents/probe.md"
+  run --separate-stderr "$SCRIPT" link
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"no agent definitions in $(realpath "$SKILL")/agents"* ]]
+  [ ! -e .claude ]
+}
+
+@test "link validates every definition before writing anything" {
+  printf -- '---\nname: second\nmodel: opus\n---\nsecond\n' > "$SKILL/agents/second.md"
+  mkdir -p .claude/agents
+  echo mine > .claude/agents/second.md
+  run --separate-stderr "$SCRIPT" link
+  [ "$status" -eq 3 ]
+  [[ "$stderr" == *".claude/agents/second.md exists and is not a link to"* ]]
+  [[ "$stderr" != *"linked:"* ]]
+  [ ! -e .claude/agents/probe.md ]
+  [ "$(grep -cF '/.claude/agents/' .git/info/exclude || true)" -eq 0 ]
+}
+
+@test "link never replaces a dangling link" {
+  mkdir -p .claude/agents
+  ln -s "$TMP/gone.md" .claude/agents/probe.md
+  run --separate-stderr "$SCRIPT" link
+  [ "$status" -eq 3 ]
+  [[ "$stderr" == *".claude/agents/probe.md exists and is not a link to"* ]]
+  [ "$(readlink .claude/agents/probe.md)" = "$TMP/gone.md" ]
+}
+
+@test "link adds no exclude entry for a path git already ignores" {
+  printf '/.worktrees/\n/.claude/\n' > .gitignore
+  git commit -qam "ignore .claude"
+  run --separate-stderr "$SCRIPT" link
+  [ "$status" -eq 0 ]
+  [ "$stderr" = "agents: linked: $MAIN/.claude/agents/probe.md" ]
+  [ "$(grep -cF '/.claude/agents/probe.md' .git/info/exclude || true)" -eq 0 ]
+  [ -z "$(git status --porcelain)" ]
+}
+
+@test "link run through a symbolic link to the skill targets the real definition" {
+  ln -s "$SKILL" "$TMP/skill-link"
+  run --separate-stderr "$TMP/skill-link/tools/agents.sh" link
+  [ "$status" -eq 0 ]
+  [ "$stderr" = "agents: linked: $MAIN/.claude/agents/probe.md" ]
+  [ "$(readlink .claude/agents/probe.md)" = "$(realpath "$SKILL/agents/probe.md")" ]
+}
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
