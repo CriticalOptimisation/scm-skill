@@ -8,4 +8,4 @@ This companion document outlines the segmented workflow referenced from the top-
 - [Implementation](implementation.md) – Task 5: Implementation, Testing, and Review
 - [Integration](integration.md) – Task 6: Final Integration, Post-Implementation Validation
 
-Follow these tasks sequentially whenever implementing an approved issue. The top-level skill keeps the decision tree, meta-task guidance, and important guardrails, while these files house the detailed step-by-step instructions for changes to source code, documentation, or AI skills.
+Follow these tasks sequentially whenever implementing an approved issue. Each step names who does it on its `By` line: the conductor (the main session) or the `scm-engineer` agent; see *Conductor and Engineer* in `SKILL.md`. The top-level skill keeps the decision tree, meta-task guidance, and important guardrails, while these files house the detailed step-by-step instructions for changes to source code, documentation, or AI skills.

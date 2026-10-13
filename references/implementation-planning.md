@@ -6,6 +6,7 @@ This segment covers detailed planning. Branch creation follows plan approval, at
 
 ## Implementation Planning
 - **Objective**: Turn the assessment into a practical plan.
+- **By**: `scm-engineer` writes and posts the plan; the conductor assesses approval.
 - **Activities**:
   - Work from the main worktree on `main`, read-only: no branch is created and no git-tracked file changes in this task. The branch is created at the start of Task 4, once the plan is approved.
   - Break down the work into specific tasks, identify files/components to change, and roughly describe their interactions.
