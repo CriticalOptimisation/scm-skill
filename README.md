@@ -4,7 +4,7 @@ The software configuration management process used by CalCool Studios' Claude Co
 
 ## Using it in a project
 
-A project uses a **fixed copy** of the skill: a detached worktree of the skill's repository at one commit, `.worktrees/skill-<sha12>`, which is never edited and never checked out again. The project only gets links to it, and only the links move. A checkout, a pull or a branch switch in the skill's repository therefore never changes the skill under a running session, and a session that has loaded a copy keeps it when the links move (it resolves `<skill>` once; see *Paths* in `SKILL.md`).
+A project uses its own **fixed copy** of the skill: a detached worktree of the skill's repository at one commit, `.worktrees/skill-<sha12>-<pid>`, which is never edited and never checked out again. `<pid>` stands for the project: the first 8 hex digits of the SHA-1 of its absolute path. A copy is never shared: two projects on the same commit get two copies, because a skill may be set up with files of the project that uses it (see *The skill-copy hook*). Each copy has a `USER_PROJECT` file, a plain file (not a link) holding the absolute path of its project, which `skill-copy.sh` reads to find the project back and check that it is still there. `USER_PROJECT` is excluded in the skill repository's `.git/info/exclude`, unless git already ignores it, so that the copy of any commit stays clean. The project only gets links to it, and only the links move. A checkout, a pull or a branch switch in the skill's repository therefore never changes the skill under a running session, and a session that has loaded a copy keeps it when the links move (it resolves `<skill>` once; see *Paths* in `SKILL.md`).
 
 `tools/skill-copy.sh` makes the copies and the links. Run it from the **main worktree of the project**:
 
@@ -23,11 +23,11 @@ git clone https://github.com/CriticalOptimisation/scm-skill.git ../scm-skill
 
 `use <skill repo> <ref> [options]`, run again, updates the installation; with the same ref, it changes nothing. It:
 
-1. fetches `origin` in the skill repository (a failed fetch only warns), and creates the copy `<skill repo>/.worktrees/skill-<sha12>` of `<ref>` if it is missing;
+1. fetches `origin` in the skill repository (a failed fetch only warns), and creates the project's copy `<skill repo>/.worktrees/skill-<sha12>-<pid>` of `<ref>`, with its `USER_PROJECT`, if it is missing;
 2. sources the skill's hook, if the copy has one (see *The skill-copy hook*);
 3. moves the links, all relative: `<skills dir>/<name>` to the copy, where `<name>` is the `name:` field of the copy's `SKILL.md` (`scm-skill` here, whatever the repository is called), and one link per agent, `<agents dir>/<file>`, to each `agents/<file>` of the copy. The project's own files and agents are never touched;
 4. excludes each link in the project's `.git/info/exclude`, unless git already ignores it, so that the project repository never carries a path specific to one machine;
-5. logs `<epoch> skill-<sha12> <project>` in `<skill repo>/.worktrees/skill-copies.log`;
+5. logs `<epoch> skill-<sha12>-<pid> <project>` in `<skill repo>/.worktrees/skill-copies.log`;
 6. prunes the copies that nothing uses any more.
 
 Agents and skills are loaded when a session starts: after `use`, start a new session.
@@ -41,7 +41,7 @@ Agents and skills are loaded when a session starts: after `use`, start a new ses
 
 Nothing depends on Claude Code: with both directories set elsewhere, `use` works with no `claude` process and no `~/.claude`.
 
-**Pruning.** `use` prunes; `skill-copy.sh prune <skill repo>` prunes on demand. A copy is kept while any project recorded in the log still has a link into it (the link itself is checked, not only the log line), or while a running session may use it: when it stopped being current later than the start of the oldest `claude` process minus a margin, `SKILL_COPY_MARGIN` seconds (120 by default). With no session, only the linked copies stay. A copy with changes in it is never removed. `skill-copy.sh status <skill repo>` lists the copies, the projects that link them and when each stopped being current. `SKILL_COPY_STARTS` (session start times) and `SKILL_COPY_NOW` (the clock) replace the process list and the clock in tests.
+**Pruning.** `use` prunes; `skill-copy.sh prune <skill repo>` prunes on demand. A copy is kept while its project, the one in its `USER_PROJECT`, is still there and still has a link into it (the link itself is checked, not only the log), or while a running session may use it: when it stopped being current later than the start of the oldest `claude` process minus a margin, `SKILL_COPY_MARGIN` seconds (120 by default). With no session, only the linked copies stay; a copy whose project was deleted goes. A copy with changes in it is never removed. `skill-copy.sh status <skill repo>` lists the copies, the project of each and when each stopped being current. `SKILL_COPY_STARTS` (session start times) and `SKILL_COPY_NOW` (the clock) replace the process list and the clock in tests.
 
 **Refusals.** `use` refuses, with exit code `3` and before changing anything, when it is not run from the main worktree of the project; when `/.worktrees/` is not ignored in the skill repository; when `SKILL.md` has no `name:` field at `<ref>`; and when something other than a link to a copy (`.worktrees/skill-*`) is in the way of a link: a file, a directory, a link elsewhere or a dangling link. Exit codes, as for `tools/worktree.sh`: `0` success, `1` failure, `2` usage, `3` refused for safety.
 
@@ -74,7 +74,7 @@ A skill may ship `tools/skill-copy-hook.sh` to make a copy work in the project t
 - `skill_copy_link <source> <dest>` is defined for the hook: it makes `<dest>` a relative link to `<source>`. With `--frozen`, it copies `<source>` to `<dest>` instead. `SKILL_COPY_FROZEN` is `1` with `--frozen`, and empty otherwise. Links go from the copy to the project, so there is no unlink hook. Frozen copies suit files that are developed actively rather than plain data, such as a git submodule in a private repository.
 - If the hook fails (a non-zero status), `use` exits `1`: the links do not move and nothing is logged.
 - The hook runs on every `use`, so it must be idempotent. What it places in the copy must be ignored by the skill's `.gitignore`: otherwise the copy has changes in it, and pruning keeps it.
-- A copy is shared by every project that uses the same commit, so what the hook places in it comes from the last project that ran `use` on it.
+- The copy belongs to one project, so what the hook places in it comes from that project only. Code of the skill that runs later finds the project in the copy's `USER_PROJECT`.
 
 **Trust.** The hook is code from the ref you fetched, and it runs with your rights. Run `use` only on refs of a repository you trust, as you would before running any of its scripts.
 
