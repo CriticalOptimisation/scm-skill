@@ -130,20 +130,12 @@ log() {
 # are tested on code 3, so that a missing script — which exits with 127 — can
 # never pass them.
 
-# REVIEW PLACEHOLDER: the script exists and is executable -> the script exists and is executable
-# (tools/agents.bats, removed with tools/agents.*; converted in place.)
 @test "the script exists and is executable" {
   [ -x "$SCRIPT" ]
 }
 
 # --- use -------------------------------------------------------------------
 
-# REVIEW PLACEHOLDER: link keeps the project clean: the link is excluded from git -> use creates the project's own detached copy in the skill repository, links it relatively, excludes the link and logs the move
-# @test "link keeps the project clean: the link is excluded from git" {
-#   "$SCRIPT" link
-#   grep -qxF '/.claude/agents/probe.md' .git/info/exclude
-#   [ -z "$(git status --porcelain)" ]
-# }
 @test "use creates the project's own detached copy in the skill repository, links it relatively, excludes the link and logs the move" {
   run --separate-stderr "$SCRIPT" use "$SKILL" "$A"
   [ "$status" -eq 0 ]
@@ -166,15 +158,6 @@ log() {
   [ -z "$(git -C "$SKILL" status --porcelain)" ]
 }
 
-# REVIEW PLACEHOLDER: link is idempotent -> use run twice changes nothing: files, excludes, worktrees and log
-# @test "link is idempotent" {
-#   "$SCRIPT" link
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 0 ]
-#   [ -z "$stderr" ]
-#   [ "$(grep -cxF '/.claude/agents/probe.md' .git/info/exclude)" -eq 1 ]
-#   [ "$(readlink .claude/agents/probe.md)" = "$(realpath "$SKILL/agents/probe.md")" ]
-# }
 @test "use run twice changes nothing: files, excludes, worktrees and log" {
   "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
   before=$(snapshot; log)
@@ -184,14 +167,6 @@ log() {
   [ "$(snapshot; log)" = "$before" ]
 }
 
-# REVIEW PLACEHOLDER: link links each agent definition into the project's .claude/agents -> use gives each agent of the copy its own relative link and leaves the project's own agents alone
-# @test "link links each agent definition into the project's .claude/agents" {
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 0 ]
-#   [ "$stderr" = "agents: linked: $MAIN/.claude/agents/probe.md" ]
-#   [ -L .claude/agents/probe.md ]
-#   [ "$(readlink .claude/agents/probe.md)" = "$(realpath "$SKILL/agents/probe.md")" ]
-# }
 @test "use gives each agent of the copy its own relative link and leaves the project's own agents alone" {
   mkdir -p .claude/agents
   echo mine > .claude/agents/mine.md
@@ -242,14 +217,6 @@ log() {
   [[ "$output" == *"./.claude/skills/demo-skill/SKILL.md"* ]]
 }
 
-# REVIEW PLACEHOLDER: link run through a symbolic link to the skill targets the real definition -> use given a symbolic link to the skill repository links the real copy
-# @test "link run through a symbolic link to the skill targets the real definition" {
-#   ln -s "$SKILL" "$TMP/skill-link"
-#   run --separate-stderr "$TMP/skill-link/tools/agents.sh" link
-#   [ "$status" -eq 0 ]
-#   [ "$stderr" = "agents: linked: $MAIN/.claude/agents/probe.md" ]
-#   [ "$(readlink .claude/agents/probe.md)" = "$(realpath "$SKILL/agents/probe.md")" ]
-# }
 @test "use given a symbolic link to the skill repository links the real copy" {
   ln -s "$SKILL" "$TMP/skill-link"
   run --separate-stderr "$SCRIPT" use "$TMP/skill-link" "$A"
@@ -260,16 +227,6 @@ log() {
   [ "$(log)" = "1000 skill-$A-$PP $PROJ" ]
 }
 
-# REVIEW PLACEHOLDER: link adds no exclude entry for a path git already ignores -> use adds no exclude entry for a link git already ignores
-# @test "link adds no exclude entry for a path git already ignores" {
-#   printf '/.worktrees/\n/.claude/\n' > .gitignore
-#   git commit -qam "ignore .claude"
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 0 ]
-#   [ "$stderr" = "agents: linked: $MAIN/.claude/agents/probe.md" ]
-#   [ "$(grep -cF '/.claude/agents/probe.md' .git/info/exclude || true)" -eq 0 ]
-#   [ -z "$(git status --porcelain)" ]
-# }
 @test "use adds no exclude entry for a link git already ignores" {
   printf '/.worktrees/\n/.claude/\n' > .gitignore
   git commit -qam "ignore .claude"
@@ -501,16 +458,6 @@ two_projects() {
 
 # --- refusals: exit 3, nothing changed ---------------------------------------
 
-# REVIEW PLACEHOLDER: link run from a branch worktree links into the main worktree -> use refuses to run outside the main worktree of the project
-# @test "link run from a branch worktree links into the main worktree" {
-#   git worktree add -q -b feature/7-trial .worktrees/7-trial
-#   cd .worktrees/7-trial
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 0 ]
-#   [ "$stderr" = "agents: linked: $MAIN/.claude/agents/probe.md" ]
-#   [ -L "$MAIN/.claude/agents/probe.md" ]
-#   [ ! -e .claude/agents/probe.md ]
-# }
 @test "use refuses to run outside the main worktree of the project" {
   git worktree add -q -b feature/9-x .worktrees/9-x
   before=$(snapshot)
@@ -549,28 +496,6 @@ two_projects() {
   [ "$(snapshot)" = "$before" ]
 }
 
-# REVIEW PLACEHOLDER: link never overwrites a regular file -> use refuses a regular file with the name of an agent link
-# @test "link never overwrites a regular file" {
-#   mkdir -p .claude/agents
-#   echo mine > .claude/agents/probe.md
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 3 ]
-#   [[ "$stderr" == *".claude/agents/probe.md exists and is not a link to $(realpath "$SKILL/agents/probe.md"): nothing is overwritten"* ]]
-#   [ ! -L .claude/agents/probe.md ]
-#   [ "$(cat .claude/agents/probe.md)" = mine ]
-# }
-# REVIEW PLACEHOLDER: link validates every definition before writing anything -> use refuses a regular file with the name of an agent link
-# @test "link validates every definition before writing anything" {
-#   printf -- '---\nname: second\nmodel: opus\n---\nsecond\n' > "$SKILL/agents/second.md"
-#   mkdir -p .claude/agents
-#   echo mine > .claude/agents/second.md
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 3 ]
-#   [[ "$stderr" == *".claude/agents/second.md exists and is not a link to"* ]]
-#   [[ "$stderr" != *"linked:"* ]]
-#   [ ! -e .claude/agents/probe.md ]
-#   [ "$(grep -cF '/.claude/agents/' .git/info/exclude || true)" -eq 0 ]
-# }
 @test "use refuses a regular file with the name of an agent link" {
   # Two agents; the second clashes: nothing at all is written, not even the
   # skill link or the first agent's link.
@@ -597,25 +522,6 @@ two_projects() {
   [ "$(snapshot)" = "$before" ]
 }
 
-# REVIEW PLACEHOLDER: link never replaces a link to another file -> use refuses an agent link that does not point into a copy
-# @test "link never replaces a link to another file" {
-#   mkdir -p .claude/agents
-#   echo other > "$TMP/other.md"
-#   ln -s "$TMP/other.md" .claude/agents/probe.md
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 3 ]
-#   [[ "$stderr" == *".claude/agents/probe.md exists and is not a link to $(realpath "$SKILL/agents/probe.md"): nothing is overwritten"* ]]
-#   [ "$(readlink .claude/agents/probe.md)" = "$TMP/other.md" ]
-# }
-# REVIEW PLACEHOLDER: link never replaces a dangling link -> use refuses an agent link that does not point into a copy
-# @test "link never replaces a dangling link" {
-#   mkdir -p .claude/agents
-#   ln -s "$TMP/gone.md" .claude/agents/probe.md
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 3 ]
-#   [[ "$stderr" == *".claude/agents/probe.md exists and is not a link to"* ]]
-#   [ "$(readlink .claude/agents/probe.md)" = "$TMP/gone.md" ]
-# }
 @test "use refuses an agent link that does not point into a copy" {
   mkdir -p .claude/agents
   echo other > "$TMP/other.md"
@@ -632,12 +538,12 @@ two_projects() {
 
 # --- edge cases --------------------------------------------------------------
 
-USAGE="usage: skill-copy.sh use <skill repo> <ref> [--skills-dir <dir>] [--agents-dir <dir>] [--clone-to <path>] [--frozen] | prune <skill repo> | status <skill repo>"
+USAGE="usage: skill-copy.sh use <skill repo> <ref> [--skills-dir <dir>] [--agents-dir <dir>] [--clone-to <path>] [--frozen] | update <copy> | prune <skill repo> | status <skill repo>"
 
 @test "an unknown subcommand, a missing argument or an extra argument exit with the usage code" {
   before=$(snapshot)
   for args in "" "unknown" "use" "use x" "use x y --bogus" "use x y --skills-dir" \
-              "prune" "prune x y" "status" "status x y"; do
+              "update" "update x y" "prune" "prune x y" "status" "status x y"; do
     run --separate-stderr "$SCRIPT" $args
     [ "$status" -eq 2 ]
     [[ "$stderr" == *"skill-copy: $USAGE"* ]]
@@ -871,58 +777,201 @@ fake_session() {
 # the agent links. The old tests below are replaced by the edge cases above
 # (named after the arrow), or dropped with --user.
 
-# REVIEW PLACEHOLDER: an unknown subcommand exits with the usage code -> an unknown subcommand, a missing argument or an extra argument exit with the usage code
-# @test "an unknown subcommand exits with the usage code" {
-#   run --separate-stderr "$SCRIPT" unknown
-#   [ "$status" -eq 2 ]
-#   [[ "$stderr" == *"usage: agents.sh link [--user]"* ]]
-# }
-# REVIEW PLACEHOLDER: link refuses extra or unknown arguments -> an unknown subcommand, a missing argument or an extra argument exit with the usage code
-# @test "link refuses extra or unknown arguments" {
-#   run --separate-stderr "$SCRIPT" link --bogus
-#   [ "$status" -eq 2 ]
-#   [[ "$stderr" == *"usage: agents.sh link [--user]"* ]]
-#   run --separate-stderr "$SCRIPT" link --user extra
-#   [ "$status" -eq 2 ]
-#   [[ "$stderr" == *"usage: agents.sh link [--user]"* ]]
-#   [ ! -e .claude ]
-# }
-# REVIEW PLACEHOLDER: link outside a git repository fails in project mode -> outside a git repository, use exits 1
-# @test "link outside a git repository fails in project mode" {
-#   mkdir "$TMP/plain"
-#   cd "$TMP/plain"
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 1 ]
-#   [[ "$stderr" == *"not in a git repository"* ]]
-#   [ ! -e .claude ]
-# }
-# REVIEW PLACEHOLDER: link fails when the skill ships no agent definitions -> use removes the link of an agent dropped between copies; a skill with no agents/ and no hook gets only its skill link
-# @test "link fails when the skill ships no agent definitions" {
-#   rm "$SKILL/agents/probe.md"
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 1 ]
-#   [[ "$stderr" == *"no agent definitions in $(realpath "$SKILL")/agents"* ]]
-#   [ ! -e .claude ]
-# }
-# REVIEW PLACEHOLDER: link --user links into ~/.claude/agents and leaves the project alone -> none: --user is dropped (#23, principle 5)
-# @test "link --user links into ~/.claude/agents and leaves the project alone" {
-#   run --separate-stderr "$SCRIPT" link --user
-#   [ "$status" -eq 0 ]
-#   [ "$stderr" = "agents: linked: $HOME/.claude/agents/probe.md" ]
-#   [ "$(readlink "$HOME/.claude/agents/probe.md")" = "$(realpath "$SKILL/agents/probe.md")" ]
-#   [ ! -e .claude ]
-# }
-# REVIEW PLACEHOLDER: link --user works outside a git repository -> none: --user is dropped (#23, principle 5)
-# @test "link --user works outside a git repository" {
-#   mkdir "$TMP/plain"
-#   cd "$TMP/plain"
-#   run --separate-stderr "$SCRIPT" link --user
-#   [ "$status" -eq 0 ]
-#   [ "$stderr" = "agents: linked: $HOME/.claude/agents/probe.md" ]
-#   [ -L "$HOME/.claude/agents/probe.md" ]
-# }
+# --- update (#26) ------------------------------------------------------------
+#
+# update <copy> brings the project's copy up to origin/main of the skill's
+# repository, finding the repository, the project, the link directories and
+# --frozen from the copy. It prints one line on stdout: updated, current or
+# kept. Offline or refused, it warns and the links do not move.
+# In setup, origin/main is at C.
+
+copy_of() {
+  echo "$SKILL/.worktrees/skill-$1-$PP"
+}
+
+@test "update moves a copy behind origin/main to origin/main and says updated" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "updated $A $C $(copy_of "$C")" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$C-$PP (origin/main)"* ]]
+  [ "$(readlink -f .claude/skills/demo-skill)" = "$(copy_of "$C")" ]
+  [ "$(readlink -f .claude/agents/probe.md)" = "$(copy_of "$C")/agents/probe.md" ]
+  [ "$(log)" = "$(printf '1000 skill-%s-%s %s\n2000 skill-%s-%s %s' "$A" "$PP" "$PROJ" "$C" "$PP" "$PROJ")" ]
+}
+
+@test "update of a copy at origin/main says current and changes nothing" {
+  "$SCRIPT" use "$SKILL" "$C" 2>/dev/null
+  before=$(snapshot; log)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$C")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "current $C" ]
+  [ -z "$stderr" ]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "update of a copy ahead of origin/main says kept ahead and changes nothing" {
+  (cd "$SKILL" && echo D > agents/probe.md && git commit -qam D)
+  D=$(git -C "$SKILL" rev-parse HEAD | cut -c1-12)
+  "$SCRIPT" use "$SKILL" "$D" 2>/dev/null
+  before=$(snapshot; log)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$D")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "kept $D ahead" ]
+  [ -z "$stderr" ]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "update of a copy diverged from origin/main says kept diverged and changes nothing" {
+  (cd "$SKILL" && git checkout -q -b side "$A" && echo E > agents/probe.md && git commit -qam E && git checkout -q main)
+  E=$(git -C "$SKILL" rev-parse side | cut -c1-12)
+  "$SCRIPT" use "$SKILL" "$E" 2>/dev/null
+  before=$(snapshot; log)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$E")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "kept $E diverged" ]
+  [ -z "$stderr" ]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "offline, update warns, exits 1 and the links do not move, even with a newer local origin/main" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  git -C "$SKILL" remote set-url origin "$TMP/missing.git"
+  before=$(snapshot; log)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"skill-copy: warning: fetch from origin failed; links not moved"* ]]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "when use refuses origin/main, update passes the refusal on and the links do not move" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  (cd "$SKILL" && skill_md "" nameless && git commit -qam nameless && git push -q origin main)
+  N=$(git -C "$SKILL" rev-parse HEAD | cut -c1-12)
+  before=$(snapshot; log)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 3 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"skill-copy: SKILL.md at origin/main has no name: field"* ]]
+  [[ "$stderr" == *"skill-copy: warning: update to $N failed; links not moved"* ]]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "update keeps the link directories the copy was installed with" {
+  "$SCRIPT" use "$SKILL" "$A" --skills-dir ext/skills --agents-dir ext/agents 2>/dev/null
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "updated $A $C $(copy_of "$C")" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$C-$PP (origin/main)"* ]]
+  [ "$(readlink ext/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$C-$PP" ]
+  [ "$(readlink ext/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$C-$PP/agents/probe.md" ]
+  [ ! -e .claude ]
+}
+
+@test "use --frozen records a marker that update repeats, and use without --frozen removes it" {
+  echo '{"k": 1}' > settings.json
+  commit_hook "printf '%s\n' \"\${SKILL_COPY_FROZEN:-}\" > '$TMP/hook.frozen'
+skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
+  "$SCRIPT" use "$SKILL" "$H" --frozen 2>/dev/null
+  [ -f "$SKILL/.worktrees/skill-$H-$PP.frozen" ]
+  (cd "$SKILL" && echo J > agents/probe.md && git commit -qam J && git push -q origin main)
+  J=$(git -C "$SKILL" rev-parse HEAD | cut -c1-12)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$H")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "updated $H $J $(copy_of "$J")" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$J-$PP (origin/main)"* ]]
+  [ "$(cat "$TMP/hook.frozen")" = 1 ]
+  [ ! -L "$(copy_of "$J")/settings.json" ]
+  [ -f "$SKILL/.worktrees/skill-$J-$PP.frozen" ]
+  SKILL_COPY_NOW=3000 "$SCRIPT" use "$SKILL" "$A" --frozen 2>/dev/null
+  [ -f "$SKILL/.worktrees/skill-$A-$PP.frozen" ]
+  SKILL_COPY_NOW=4000 "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  [ ! -e "$SKILL/.worktrees/skill-$A-$PP.frozen" ]
+}
+
+# --- update: edge cases (#26) ------------------------------------------------
+
+@test "update refuses the copy of another project" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  new_project "$WORK/proj2"
+  before=$(snapshot; log)
+  run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 3 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"skill-copy: skill-$A-$PP belongs to another project: $PROJ"* ]]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "update refuses to run outside the main worktree of the project" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  git worktree add -q -b feature/9-x .worktrees/9-x
+  before=$(snapshot; log)
+  cd .worktrees/9-x
+  run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 3 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"skill-copy: run from the main worktree of the project"* ]]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "update of a path that is not a copy exits 1" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  before=$(snapshot; log)
+  for p in "$SKILL" "$TMP/missing" "$PROJ"; do
+    run --separate-stderr "$SCRIPT" update "$p"
+    [ "$status" -eq 1 ]
+    [ -z "$output" ]
+    [[ "$stderr" == *"skill-copy: not a copy of a skill: $p"* ]]
+  done
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "when the hook of origin/main fails, update exits 1 and the links do not move" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  commit_hook "return 1"
+  git -C "$SKILL" push -q origin main
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"skill-copy: the hook of skill-$H-$PP failed; links not moved"* ]]
+  [[ "$stderr" == *"skill-copy: warning: update to $H failed; links not moved"* ]]
+  [ "$(readlink -f .claude/skills/demo-skill)" = "$(copy_of "$A")" ]
+  [ "$(readlink -f .claude/agents/probe.md)" = "$(copy_of "$A")/agents/probe.md" ]
+  [ "$(log)" = "1000 skill-$A-$PP $PROJ" ]
+}
+
+@test "update keeps the old copy while the session that resolved it runs" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  SKILL_COPY_STARTS=1500 SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "updated $A $C $(copy_of "$C")" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$C-$PP (origin/main)"* ]]
+  [ -d "$(copy_of "$A")" ]
+}
+
+@test "update of a copy with no record of its links uses the default link directories" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  rm "$SKILL/.worktrees/skill-$A-$PP.links"
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "updated $A $C $(copy_of "$C")" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$C-$PP (origin/main)"* ]]
+  [ "$(readlink -f .claude/skills/demo-skill)" = "$(copy_of "$C")" ]
+}
+
+@test "prune removes the frozen marker with the copy" {
+  "$SCRIPT" use "$SKILL" "$A" --frozen 2>/dev/null
+  [ -f "$SKILL/.worktrees/skill-$A-$PP.frozen" ]
+  SKILL_COPY_STARTS="" SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" use "$SKILL" "$C"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: removed skill-$A-$PP"* ]]
+  [ ! -e "$SKILL/.worktrees/skill-$A-$PP.frozen" ]
+  [ ! -e "$SKILL/.worktrees/skill-$A-$PP" ]
+}
 
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #25    | contract, refusals and edge cases; agents.bats converted (#23) |
+# | #28    | update <copy>: core, edge cases; frozen marker; placeholders removed (#26)|
