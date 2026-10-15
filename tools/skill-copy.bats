@@ -818,6 +818,7 @@ copy_of() {
   SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$D")"
   [ "$status" -eq 0 ]
   [ "$output" = "kept $D ahead" ]
+  [ -z "$stderr" ]
   [ "$(snapshot; log)" = "$before" ]
 }
 
@@ -829,6 +830,7 @@ copy_of() {
   SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$E")"
   [ "$status" -eq 0 ]
   [ "$output" = "kept $E diverged" ]
+  [ -z "$stderr" ]
   [ "$(snapshot; log)" = "$before" ]
 }
 
@@ -861,6 +863,7 @@ copy_of() {
   SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
   [ "$status" -eq 0 ]
   [ "$output" = "updated $A $C $(copy_of "$C")" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$C-$PP (origin/main)"* ]]
   [ "$(readlink ext/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$C-$PP" ]
   [ "$(readlink ext/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$C-$PP/agents/probe.md" ]
   [ ! -e .claude ]
@@ -877,6 +880,7 @@ skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
   SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$H")"
   [ "$status" -eq 0 ]
   [ "$output" = "updated $H $J $(copy_of "$J")" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$J-$PP (origin/main)"* ]]
   [ "$(cat "$TMP/hook.frozen")" = 1 ]
   [ ! -L "$(copy_of "$J")/settings.json" ]
   [ -f "$SKILL/.worktrees/skill-$J-$PP.frozen" ]
@@ -884,6 +888,86 @@ skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
   [ -f "$SKILL/.worktrees/skill-$A-$PP.frozen" ]
   SKILL_COPY_NOW=4000 "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
   [ ! -e "$SKILL/.worktrees/skill-$A-$PP.frozen" ]
+}
+
+# --- update: edge cases (#26) ------------------------------------------------
+
+@test "update refuses the copy of another project" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  new_project "$WORK/proj2"
+  before=$(snapshot; log)
+  run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 3 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"skill-copy: skill-$A-$PP belongs to another project: $PROJ"* ]]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "update refuses to run outside the main worktree of the project" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  git worktree add -q -b feature/9-x .worktrees/9-x
+  before=$(snapshot; log)
+  cd .worktrees/9-x
+  run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 3 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"skill-copy: run from the main worktree of the project"* ]]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "update of a path that is not a copy exits 1" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  before=$(snapshot; log)
+  for p in "$SKILL" "$TMP/missing" "$PROJ"; do
+    run --separate-stderr "$SCRIPT" update "$p"
+    [ "$status" -eq 1 ]
+    [ -z "$output" ]
+    [[ "$stderr" == *"skill-copy: not a copy of a skill: $p"* ]]
+  done
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "when the hook of origin/main fails, update exits 1 and the links do not move" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  commit_hook "return 1"
+  git -C "$SKILL" push -q origin main
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"skill-copy: the hook of skill-$H-$PP failed; links not moved"* ]]
+  [[ "$stderr" == *"skill-copy: warning: update to $H failed; links not moved"* ]]
+  [ "$(readlink -f .claude/skills/demo-skill)" = "$(copy_of "$A")" ]
+  [ "$(readlink -f .claude/agents/probe.md)" = "$(copy_of "$A")/agents/probe.md" ]
+  [ "$(log)" = "1000 skill-$A-$PP $PROJ" ]
+}
+
+@test "update keeps the old copy while the session that resolved it runs" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  SKILL_COPY_STARTS=1500 SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "updated $A $C $(copy_of "$C")" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$C-$PP (origin/main)"* ]]
+  [ -d "$(copy_of "$A")" ]
+}
+
+@test "update of a copy with no record of its links uses the default link directories" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  rm "$SKILL/.worktrees/skill-$A-$PP.links"
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "updated $A $C $(copy_of "$C")" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$C-$PP (origin/main)"* ]]
+  [ "$(readlink -f .claude/skills/demo-skill)" = "$(copy_of "$C")" ]
+}
+
+@test "prune removes the frozen marker with the copy" {
+  "$SCRIPT" use "$SKILL" "$A" --frozen 2>/dev/null
+  [ -f "$SKILL/.worktrees/skill-$A-$PP.frozen" ]
+  SKILL_COPY_STARTS="" SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" use "$SKILL" "$C"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: removed skill-$A-$PP"* ]]
+  [ ! -e "$SKILL/.worktrees/skill-$A-$PP.frozen" ]
+  [ ! -e "$SKILL/.worktrees/skill-$A-$PP" ]
 }
 
 # --- Change History -------------------------------------------------------
