@@ -777,6 +777,115 @@ fake_session() {
 # the agent links. The old tests below are replaced by the edge cases above
 # (named after the arrow), or dropped with --user.
 
+# --- update (#26) ------------------------------------------------------------
+#
+# update <copy> brings the project's copy up to origin/main of the skill's
+# repository, finding the repository, the project, the link directories and
+# --frozen from the copy. It prints one line on stdout: updated, current or
+# kept. Offline or refused, it warns and the links do not move.
+# In setup, origin/main is at C.
+
+copy_of() {
+  echo "$SKILL/.worktrees/skill-$1-$PP"
+}
+
+@test "update moves a copy behind origin/main to origin/main and says updated" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "updated $A $C $(copy_of "$C")" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$C-$PP (origin/main)"* ]]
+  [ "$(readlink -f .claude/skills/demo-skill)" = "$(copy_of "$C")" ]
+  [ "$(readlink -f .claude/agents/probe.md)" = "$(copy_of "$C")/agents/probe.md" ]
+  [ "$(log)" = "$(printf '1000 skill-%s-%s %s\n2000 skill-%s-%s %s' "$A" "$PP" "$PROJ" "$C" "$PP" "$PROJ")" ]
+}
+
+@test "update of a copy at origin/main says current and changes nothing" {
+  "$SCRIPT" use "$SKILL" "$C" 2>/dev/null
+  before=$(snapshot; log)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$C")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "current $C" ]
+  [ -z "$stderr" ]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "update of a copy ahead of origin/main says kept ahead and changes nothing" {
+  (cd "$SKILL" && echo D > agents/probe.md && git commit -qam D)
+  D=$(git -C "$SKILL" rev-parse HEAD | cut -c1-12)
+  "$SCRIPT" use "$SKILL" "$D" 2>/dev/null
+  before=$(snapshot; log)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$D")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "kept $D ahead" ]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "update of a copy diverged from origin/main says kept diverged and changes nothing" {
+  (cd "$SKILL" && git checkout -q -b side "$A" && echo E > agents/probe.md && git commit -qam E && git checkout -q main)
+  E=$(git -C "$SKILL" rev-parse side | cut -c1-12)
+  "$SCRIPT" use "$SKILL" "$E" 2>/dev/null
+  before=$(snapshot; log)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$E")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "kept $E diverged" ]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "offline, update warns, exits 1 and the links do not move, even with a newer local origin/main" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  git -C "$SKILL" remote set-url origin "$TMP/missing.git"
+  before=$(snapshot; log)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"skill-copy: warning: fetch from origin failed; links not moved"* ]]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "when use refuses origin/main, update passes the refusal on and the links do not move" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  (cd "$SKILL" && skill_md "" nameless && git commit -qam nameless && git push -q origin main)
+  N=$(git -C "$SKILL" rev-parse HEAD | cut -c1-12)
+  before=$(snapshot; log)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 3 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"skill-copy: SKILL.md at origin/main has no name: field"* ]]
+  [[ "$stderr" == *"skill-copy: warning: update to $N failed; links not moved"* ]]
+  [ "$(snapshot; log)" = "$before" ]
+}
+
+@test "update keeps the link directories the copy was installed with" {
+  "$SCRIPT" use "$SKILL" "$A" --skills-dir ext/skills --agents-dir ext/agents 2>/dev/null
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$A")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "updated $A $C $(copy_of "$C")" ]
+  [ "$(readlink ext/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$C-$PP" ]
+  [ "$(readlink ext/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$C-$PP/agents/probe.md" ]
+  [ ! -e .claude ]
+}
+
+@test "use --frozen records a marker that update repeats, and use without --frozen removes it" {
+  echo '{"k": 1}' > settings.json
+  commit_hook "printf '%s\n' \"\${SKILL_COPY_FROZEN:-}\" > '$TMP/hook.frozen'
+skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
+  "$SCRIPT" use "$SKILL" "$H" --frozen 2>/dev/null
+  [ -f "$SKILL/.worktrees/skill-$H-$PP.frozen" ]
+  (cd "$SKILL" && echo J > agents/probe.md && git commit -qam J && git push -q origin main)
+  J=$(git -C "$SKILL" rev-parse HEAD | cut -c1-12)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" update "$(copy_of "$H")"
+  [ "$status" -eq 0 ]
+  [ "$output" = "updated $H $J $(copy_of "$J")" ]
+  [ "$(cat "$TMP/hook.frozen")" = 1 ]
+  [ ! -L "$(copy_of "$J")/settings.json" ]
+  [ -f "$SKILL/.worktrees/skill-$J-$PP.frozen" ]
+  SKILL_COPY_NOW=3000 "$SCRIPT" use "$SKILL" "$A" --frozen 2>/dev/null
+  [ -f "$SKILL/.worktrees/skill-$A-$PP.frozen" ]
+  SKILL_COPY_NOW=4000 "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  [ ! -e "$SKILL/.worktrees/skill-$A-$PP.frozen" ]
+}
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|

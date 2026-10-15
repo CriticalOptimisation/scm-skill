@@ -249,6 +249,41 @@ agents_sh_mentions() {
   [[ -z "$output" ]]
 }
 
+# --- Updating the skill at session start (#26) -----------------------------
+# The conductor runs skill-copy.sh update once, before the engineer starts; on
+# updated, it resolves <skill> a second time and re-reads SKILL.md. The update
+# never blocks the work.
+
+@test "SKILL.md Conductor and Engineer: update at session start, before the engineer, then re-read SKILL.md" {
+  run --separate-stderr section 'Conductor and Engineer' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'**Updating the skill at session start.**'* ]]
+  [[ "$output" == *'`<skill>/tools/skill-copy.sh update <skill>`'* ]]
+  [[ "$output" == *'re-reads `SKILL.md`'* ]]
+  [[ "$output" == *'never blocks the work'* ]]
+  up=$(line_of '**Updating the skill at session start.**' "$SKILL_MD")
+  start=$(line_of '**Starting the engineer.**' "$SKILL_MD")
+  [[ -n "$up" && -n "$start" ]]
+  (( up < start ))
+}
+
+@test "SKILL.md Paths: the conductor resolves <skill> a second time after its update" {
+  run --separate-stderr section Paths "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'*Updating the skill at session start*'* ]]
+  [[ "$output" == *'a second time'* ]]
+}
+
+@test "README.md Using it in a project documents update and its three lines" {
+  run --separate-stderr section 'Using it in a project' "$README_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'**Updating.**'* ]]
+  [[ "$output" == *'skill-copy.sh update <copy>'* ]]
+  for l in '`updated <old sha12> <new sha12> <new copy dir>`' '`current <sha12>`' '`kept <sha12> ahead`' '`kept <sha12> diverged`' '<copy>.frozen'; do
+    [[ "$output" == *"$l"* ]]
+  done
+}
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
