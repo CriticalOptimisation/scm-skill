@@ -130,20 +130,12 @@ log() {
 # are tested on code 3, so that a missing script — which exits with 127 — can
 # never pass them.
 
-# REVIEW PLACEHOLDER: the script exists and is executable -> the script exists and is executable
-# (tools/agents.bats, removed with tools/agents.*; converted in place.)
 @test "the script exists and is executable" {
   [ -x "$SCRIPT" ]
 }
 
 # --- use -------------------------------------------------------------------
 
-# REVIEW PLACEHOLDER: link keeps the project clean: the link is excluded from git -> use creates the project's own detached copy in the skill repository, links it relatively, excludes the link and logs the move
-# @test "link keeps the project clean: the link is excluded from git" {
-#   "$SCRIPT" link
-#   grep -qxF '/.claude/agents/probe.md' .git/info/exclude
-#   [ -z "$(git status --porcelain)" ]
-# }
 @test "use creates the project's own detached copy in the skill repository, links it relatively, excludes the link and logs the move" {
   run --separate-stderr "$SCRIPT" use "$SKILL" "$A"
   [ "$status" -eq 0 ]
@@ -166,15 +158,6 @@ log() {
   [ -z "$(git -C "$SKILL" status --porcelain)" ]
 }
 
-# REVIEW PLACEHOLDER: link is idempotent -> use run twice changes nothing: files, excludes, worktrees and log
-# @test "link is idempotent" {
-#   "$SCRIPT" link
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 0 ]
-#   [ -z "$stderr" ]
-#   [ "$(grep -cxF '/.claude/agents/probe.md' .git/info/exclude)" -eq 1 ]
-#   [ "$(readlink .claude/agents/probe.md)" = "$(realpath "$SKILL/agents/probe.md")" ]
-# }
 @test "use run twice changes nothing: files, excludes, worktrees and log" {
   "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
   before=$(snapshot; log)
@@ -184,14 +167,6 @@ log() {
   [ "$(snapshot; log)" = "$before" ]
 }
 
-# REVIEW PLACEHOLDER: link links each agent definition into the project's .claude/agents -> use gives each agent of the copy its own relative link and leaves the project's own agents alone
-# @test "link links each agent definition into the project's .claude/agents" {
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 0 ]
-#   [ "$stderr" = "agents: linked: $MAIN/.claude/agents/probe.md" ]
-#   [ -L .claude/agents/probe.md ]
-#   [ "$(readlink .claude/agents/probe.md)" = "$(realpath "$SKILL/agents/probe.md")" ]
-# }
 @test "use gives each agent of the copy its own relative link and leaves the project's own agents alone" {
   mkdir -p .claude/agents
   echo mine > .claude/agents/mine.md
@@ -242,14 +217,6 @@ log() {
   [[ "$output" == *"./.claude/skills/demo-skill/SKILL.md"* ]]
 }
 
-# REVIEW PLACEHOLDER: link run through a symbolic link to the skill targets the real definition -> use given a symbolic link to the skill repository links the real copy
-# @test "link run through a symbolic link to the skill targets the real definition" {
-#   ln -s "$SKILL" "$TMP/skill-link"
-#   run --separate-stderr "$TMP/skill-link/tools/agents.sh" link
-#   [ "$status" -eq 0 ]
-#   [ "$stderr" = "agents: linked: $MAIN/.claude/agents/probe.md" ]
-#   [ "$(readlink .claude/agents/probe.md)" = "$(realpath "$SKILL/agents/probe.md")" ]
-# }
 @test "use given a symbolic link to the skill repository links the real copy" {
   ln -s "$SKILL" "$TMP/skill-link"
   run --separate-stderr "$SCRIPT" use "$TMP/skill-link" "$A"
@@ -260,16 +227,6 @@ log() {
   [ "$(log)" = "1000 skill-$A-$PP $PROJ" ]
 }
 
-# REVIEW PLACEHOLDER: link adds no exclude entry for a path git already ignores -> use adds no exclude entry for a link git already ignores
-# @test "link adds no exclude entry for a path git already ignores" {
-#   printf '/.worktrees/\n/.claude/\n' > .gitignore
-#   git commit -qam "ignore .claude"
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 0 ]
-#   [ "$stderr" = "agents: linked: $MAIN/.claude/agents/probe.md" ]
-#   [ "$(grep -cF '/.claude/agents/probe.md' .git/info/exclude || true)" -eq 0 ]
-#   [ -z "$(git status --porcelain)" ]
-# }
 @test "use adds no exclude entry for a link git already ignores" {
   printf '/.worktrees/\n/.claude/\n' > .gitignore
   git commit -qam "ignore .claude"
@@ -501,16 +458,6 @@ two_projects() {
 
 # --- refusals: exit 3, nothing changed ---------------------------------------
 
-# REVIEW PLACEHOLDER: link run from a branch worktree links into the main worktree -> use refuses to run outside the main worktree of the project
-# @test "link run from a branch worktree links into the main worktree" {
-#   git worktree add -q -b feature/7-trial .worktrees/7-trial
-#   cd .worktrees/7-trial
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 0 ]
-#   [ "$stderr" = "agents: linked: $MAIN/.claude/agents/probe.md" ]
-#   [ -L "$MAIN/.claude/agents/probe.md" ]
-#   [ ! -e .claude/agents/probe.md ]
-# }
 @test "use refuses to run outside the main worktree of the project" {
   git worktree add -q -b feature/9-x .worktrees/9-x
   before=$(snapshot)
@@ -549,28 +496,6 @@ two_projects() {
   [ "$(snapshot)" = "$before" ]
 }
 
-# REVIEW PLACEHOLDER: link never overwrites a regular file -> use refuses a regular file with the name of an agent link
-# @test "link never overwrites a regular file" {
-#   mkdir -p .claude/agents
-#   echo mine > .claude/agents/probe.md
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 3 ]
-#   [[ "$stderr" == *".claude/agents/probe.md exists and is not a link to $(realpath "$SKILL/agents/probe.md"): nothing is overwritten"* ]]
-#   [ ! -L .claude/agents/probe.md ]
-#   [ "$(cat .claude/agents/probe.md)" = mine ]
-# }
-# REVIEW PLACEHOLDER: link validates every definition before writing anything -> use refuses a regular file with the name of an agent link
-# @test "link validates every definition before writing anything" {
-#   printf -- '---\nname: second\nmodel: opus\n---\nsecond\n' > "$SKILL/agents/second.md"
-#   mkdir -p .claude/agents
-#   echo mine > .claude/agents/second.md
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 3 ]
-#   [[ "$stderr" == *".claude/agents/second.md exists and is not a link to"* ]]
-#   [[ "$stderr" != *"linked:"* ]]
-#   [ ! -e .claude/agents/probe.md ]
-#   [ "$(grep -cF '/.claude/agents/' .git/info/exclude || true)" -eq 0 ]
-# }
 @test "use refuses a regular file with the name of an agent link" {
   # Two agents; the second clashes: nothing at all is written, not even the
   # skill link or the first agent's link.
@@ -597,25 +522,6 @@ two_projects() {
   [ "$(snapshot)" = "$before" ]
 }
 
-# REVIEW PLACEHOLDER: link never replaces a link to another file -> use refuses an agent link that does not point into a copy
-# @test "link never replaces a link to another file" {
-#   mkdir -p .claude/agents
-#   echo other > "$TMP/other.md"
-#   ln -s "$TMP/other.md" .claude/agents/probe.md
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 3 ]
-#   [[ "$stderr" == *".claude/agents/probe.md exists and is not a link to $(realpath "$SKILL/agents/probe.md"): nothing is overwritten"* ]]
-#   [ "$(readlink .claude/agents/probe.md)" = "$TMP/other.md" ]
-# }
-# REVIEW PLACEHOLDER: link never replaces a dangling link -> use refuses an agent link that does not point into a copy
-# @test "link never replaces a dangling link" {
-#   mkdir -p .claude/agents
-#   ln -s "$TMP/gone.md" .claude/agents/probe.md
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 3 ]
-#   [[ "$stderr" == *".claude/agents/probe.md exists and is not a link to"* ]]
-#   [ "$(readlink .claude/agents/probe.md)" = "$TMP/gone.md" ]
-# }
 @test "use refuses an agent link that does not point into a copy" {
   mkdir -p .claude/agents
   echo other > "$TMP/other.md"
@@ -870,57 +776,6 @@ fake_session() {
 # tools/agents.sh and tools/agents.bats are removed (#23): skill-copy.sh makes
 # the agent links. The old tests below are replaced by the edge cases above
 # (named after the arrow), or dropped with --user.
-
-# REVIEW PLACEHOLDER: an unknown subcommand exits with the usage code -> an unknown subcommand, a missing argument or an extra argument exit with the usage code
-# @test "an unknown subcommand exits with the usage code" {
-#   run --separate-stderr "$SCRIPT" unknown
-#   [ "$status" -eq 2 ]
-#   [[ "$stderr" == *"usage: agents.sh link [--user]"* ]]
-# }
-# REVIEW PLACEHOLDER: link refuses extra or unknown arguments -> an unknown subcommand, a missing argument or an extra argument exit with the usage code
-# @test "link refuses extra or unknown arguments" {
-#   run --separate-stderr "$SCRIPT" link --bogus
-#   [ "$status" -eq 2 ]
-#   [[ "$stderr" == *"usage: agents.sh link [--user]"* ]]
-#   run --separate-stderr "$SCRIPT" link --user extra
-#   [ "$status" -eq 2 ]
-#   [[ "$stderr" == *"usage: agents.sh link [--user]"* ]]
-#   [ ! -e .claude ]
-# }
-# REVIEW PLACEHOLDER: link outside a git repository fails in project mode -> outside a git repository, use exits 1
-# @test "link outside a git repository fails in project mode" {
-#   mkdir "$TMP/plain"
-#   cd "$TMP/plain"
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 1 ]
-#   [[ "$stderr" == *"not in a git repository"* ]]
-#   [ ! -e .claude ]
-# }
-# REVIEW PLACEHOLDER: link fails when the skill ships no agent definitions -> use removes the link of an agent dropped between copies; a skill with no agents/ and no hook gets only its skill link
-# @test "link fails when the skill ships no agent definitions" {
-#   rm "$SKILL/agents/probe.md"
-#   run --separate-stderr "$SCRIPT" link
-#   [ "$status" -eq 1 ]
-#   [[ "$stderr" == *"no agent definitions in $(realpath "$SKILL")/agents"* ]]
-#   [ ! -e .claude ]
-# }
-# REVIEW PLACEHOLDER: link --user links into ~/.claude/agents and leaves the project alone -> none: --user is dropped (#23, principle 5)
-# @test "link --user links into ~/.claude/agents and leaves the project alone" {
-#   run --separate-stderr "$SCRIPT" link --user
-#   [ "$status" -eq 0 ]
-#   [ "$stderr" = "agents: linked: $HOME/.claude/agents/probe.md" ]
-#   [ "$(readlink "$HOME/.claude/agents/probe.md")" = "$(realpath "$SKILL/agents/probe.md")" ]
-#   [ ! -e .claude ]
-# }
-# REVIEW PLACEHOLDER: link --user works outside a git repository -> none: --user is dropped (#23, principle 5)
-# @test "link --user works outside a git repository" {
-#   mkdir "$TMP/plain"
-#   cd "$TMP/plain"
-#   run --separate-stderr "$SCRIPT" link --user
-#   [ "$status" -eq 0 ]
-#   [ "$stderr" = "agents: linked: $HOME/.claude/agents/probe.md" ]
-#   [ -L "$HOME/.claude/agents/probe.md" ]
-# }
 
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
