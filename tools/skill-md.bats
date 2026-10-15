@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Structural tests for SKILL.md content (#13, #16, #20, #21).
+# Structural tests for SKILL.md content (#13, #16, #20, #21, #23).
 
 bats_require_minimum_version 1.5.0
 
@@ -177,18 +177,76 @@ section() {
   [[ "$output" == *'never resolve the link again'* ]]
 }
 
-@test "README.md has a Developing the skill section that names skill-repo-development" {
-  run --separate-stderr section 'Developing the skill' "$BATS_TEST_DIRNAME/../README.md"
+# --- Installation by skill-copy.sh (#23) -------------------------------------
+# A project installs the skill as a fixed copy with tools/skill-copy.sh, which
+# also links the agents; agents.sh is gone. The two README tests of #21's first
+# scope (an ln -s named scm-skill; a Developing the skill section) never reached
+# main: they are replaced by the tests below.
+
+README_MD="$BATS_TEST_DIRNAME/../README.md"
+
+@test "README.md Using it in a project installs with skill-copy.sh use, with no ln -s" {
+  run --separate-stderr section 'Using it in a project' "$README_MD"
   [[ -z "$stderr" ]]
-  [[ "$output" == '## Developing the skill'* ]]
-  [[ "$output" == *'https://github.com/CriticalOptimisation/skill-repo-development'* ]]
+  [[ "$output" == '## Using it in a project'* ]]
+  [[ "$output" == *'tools/skill-copy.sh use '* ]]
+  [[ "$output" != *'ln -s'* ]]
 }
 
-@test "README.md Using it in a project links .claude/skills/scm-skill" {
-  run --separate-stderr section 'Using it in a project' "$BATS_TEST_DIRNAME/../README.md"
+@test "README.md has no Developing the skill section" {
+  run --separate-stderr grep -c '^## Developing the skill' "$README_MD"
   [[ -z "$stderr" ]]
-  [[ "$output" == *'ln -s /path/to/scm-skill .claude/skills/scm-skill'* ]]
-  [[ "$output" == *'echo "/.claude/skills/scm-skill" >> .git/info/exclude'* ]]
+  [[ "$output" -eq 0 ]]
+}
+
+@test "README.md has a section on the hook: its file, its arguments, --frozen and the trust note" {
+  run --separate-stderr section 'The skill-copy hook' "$README_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == '## The skill-copy hook'* ]]
+  [[ "$output" == *'tools/skill-copy-hook.sh'* ]]
+  [[ "$output" == *'skill_copy_link'* ]]
+  [[ "$output" == *'--frozen'* ]]
+  [[ "$output" == *"with your rights"* ]]
+}
+
+@test "README.md has sections on add-ons and on requirements" {
+  run --separate-stderr section 'Add-ons' "$README_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == '## Add-ons'* ]]
+  run --separate-stderr section 'Requirements' "$README_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == '## Requirements'* ]]
+  for r in flock 'mv -T' procps 'bats'; do
+    [[ "$output" == *"$r"* ]]
+  done
+}
+
+@test "SKILL.md: the engineer is installed by skill-copy.sh" {
+  run --separate-stderr grep -m1 '^- \*\*The engineer\*\*' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'installed by `<skill>/tools/skill-copy.sh use`'* ]]
+}
+
+# Prints "file:line" for each mention of agents.sh in a tracked file, except
+# history.md, which records the past, and comment lines of the bats files,
+# where REVIEW PLACEHOLDER keeps the old tests.
+agents_sh_mentions() {
+  local root="$BATS_TEST_DIRNAME/.."
+  git -C "$root" ls-files -z | while IFS= read -r -d '' f; do
+    [[ $f == history.md ]] && continue
+    if [[ $f == *.bats ]]; then
+      grep -nE 'agents[.]sh' "$root/$f" | grep -vE '^[0-9]+:[[:space:]]*#' | sed "s|^|$f:|"
+    else
+      grep -nE 'agents[.]sh' "$root/$f" | sed "s|^|$f:|"
+    fi
+  done
+  return 0
+}
+
+@test "no tracked file mentions the removed agents script, apart from history.md and bats comments" {
+  run --separate-stderr agents_sh_mentions
+  [[ -z "$stderr" ]]
+  [[ -z "$output" ]]
 }
 
 # --- Change History -------------------------------------------------------
