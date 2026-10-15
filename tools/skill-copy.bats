@@ -630,19 +630,254 @@ two_projects() {
   done
 }
 
+# --- edge cases --------------------------------------------------------------
+
+USAGE="usage: skill-copy.sh use <skill repo> <ref> [--skills-dir <dir>] [--agents-dir <dir>] [--clone-to <path>] [--frozen] | prune <skill repo> | status <skill repo>"
+
+@test "an unknown subcommand, a missing argument or an extra argument exit with the usage code" {
+  before=$(snapshot)
+  for args in "" "unknown" "use" "use x" "use x y --bogus" "use x y --skills-dir" \
+              "prune" "prune x y" "status" "status x y"; do
+    run --separate-stderr "$SCRIPT" $args
+    [ "$status" -eq 2 ]
+    [[ "$stderr" == *"skill-copy: $USAGE"* ]]
+  done
+  [ "$(snapshot)" = "$before" ]
+}
+
+@test "a link directory must be relative to the project root, inside it" {
+  for dir in /abs/skills ../outside; do
+    run --separate-stderr "$SCRIPT" use "$SKILL" "$A" --skills-dir "$dir"
+    [ "$status" -eq 2 ]
+    [[ "$stderr" == *"skill-copy: link directories are relative to the project root: $dir"* ]]
+  done
+  [ ! -e .claude ]
+}
+
+@test "outside a git repository, use exits 1" {
+  mkdir "$TMP/plain"
+  cd "$TMP/plain"
+  run --separate-stderr "$SCRIPT" use "$SKILL" "$A"
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"skill-copy: not in a git repository"* ]]
+  [ ! -e .claude ]
+}
+
+@test "use with a skill repository that is neither a repository nor a URL exits 1" {
+  run --separate-stderr "$SCRIPT" use "$TMP/no-such-skill" "$A"
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"skill-copy: no skill repository at $TMP/no-such-skill"* ]]
+  [ ! -e .claude ]
+}
+
+@test "use with an unknown ref exits 1 and changes nothing" {
+  before=$(snapshot)
+  run --separate-stderr "$SCRIPT" use "$SKILL" no-such-ref
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"skill-copy: unknown ref: no-such-ref"* ]]
+  [ "$(snapshot)" = "$before" ]
+}
+
+@test "use warns when the fetch fails and uses the local refs" {
+  git -C "$SKILL" remote set-url origin "$TMP/missing.git"
+  run --separate-stderr "$SCRIPT" use "$SKILL" "$A"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: warning: fetch from origin failed; using local refs"* ]]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A-$PP ($A)"* ]]
+  [ -d "$SKILL/.worktrees/skill-$A-$PP" ]
+}
+
+@test "use given a GitHub URL clones it next to the project, then reuses the clone" {
+  # The URL is redirected to the local bare repository.
+  export GIT_CONFIG_COUNT=1
+  export GIT_CONFIG_KEY_0="url.file://$REMOTES/.insteadOf"
+  export GIT_CONFIG_VALUE_0="https://github.com/CriticalOptimisation/"
+  new_project "$TMP/elsewhere/proj2"
+  P2=$(pid "$TMP/elsewhere/proj2")
+  url=https://github.com/CriticalOptimisation/demo-skill.git
+  run --separate-stderr "$SCRIPT" use "$url" origin/main
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: cloned $url into $TMP/elsewhere/demo-skill"* ]]
+  [ "$(readlink -f .claude/skills/demo-skill)" = "$TMP/elsewhere/demo-skill/.worktrees/skill-$C-$P2" ]
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" use "$url" "$B"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" != *"cloned"* ]]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$B-$P2 ($B)"* ]]
+}
+
+@test "use removes the link of the old name when the name: field changed" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  (cd "$SKILL" && skill_md renamed-skill R && git commit -qam renamed)
+  R=$(git -C "$SKILL" rev-parse HEAD | cut -c1-12)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" use "$SKILL" "$R"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: removed link: .claude/skills/demo-skill"* ]]
+  [[ "$stderr" == *"skill-copy: renamed-skill -> skill-$R-$PP ($R)"* ]]
+  [ ! -e .claude/skills/demo-skill ] && [ ! -L .claude/skills/demo-skill ]
+  [ "$(readlink .claude/skills/renamed-skill)" = "../../../demo-skill/.worktrees/skill-$R-$PP" ]
+}
+
+@test "use leaves alone the links of another skill, even into that skill's copies" {
+  mkdir -p .claude/skills "$WORK/other/.worktrees/skill-0123456789ab-$PP"
+  ln -s ../../../other-skill .claude/skills/plain-skill
+  ln -s "../../../other/.worktrees/skill-0123456789ab-$PP" .claude/skills/other-skill
+  run --separate-stderr "$SCRIPT" use "$SKILL" "$A"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A-$PP ($A)"* ]]
+  [[ "$stderr" != *"removed link"* ]]
+  [ "$(readlink .claude/skills/plain-skill)" = ../../../other-skill ]
+  [ "$(readlink .claude/skills/other-skill)" = "../../../other/.worktrees/skill-0123456789ab-$PP" ]
+}
+
+@test "use removes the link of an agent dropped between copies" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  (cd "$SKILL" && git rm -q agents/probe.md && mkdir -p agents && echo kept > agents/kept.md && git add agents && git commit -qm drop)
+  D=$(git -C "$SKILL" rev-parse HEAD | cut -c1-12)
+  SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" use "$SKILL" "$D"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: removed link: .claude/agents/probe.md"* ]]
+  [ ! -L .claude/agents/probe.md ]
+  [ "$(readlink .claude/agents/kept.md)" = "../../../demo-skill/.worktrees/skill-$D-$PP/agents/kept.md" ]
+}
+
+@test "a skill with no agents/ and no hook gets only its skill link" {
+  (cd "$SKILL" && git rm -rq agents && git commit -qm "no agents")
+  N=$(git -C "$SKILL" rev-parse HEAD | cut -c1-12)
+  run --separate-stderr "$SCRIPT" use "$SKILL" "$N"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$N-$PP ($N)"* ]]
+  [ -L .claude/skills/demo-skill ]
+  [ ! -e .claude/agents ]
+}
+
+@test "prune keeps a copy with changes in it, warns and exits 1" {
+  use_a_b_c
+  echo edit >> "$SKILL/.worktrees/skill-$A-$PP/SKILL.md"
+  SKILL_COPY_NOW=4000 SKILL_COPY_STARTS="" run --separate-stderr "$SCRIPT" prune "$SKILL"
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"skill-copy: warning: skill-$A-$PP could not be removed (changes in it?); kept"* ]]
+  [[ "$stderr" == *"skill-copy: removed skill-$B-$PP"* ]]
+  [ -d "$SKILL/.worktrees/skill-$A-$PP" ]
+}
+
+@test "SKILL_COPY_MARGIN changes the margin" {
+  use_a_b_c
+  # B ended at 3000; the oldest session started at 3100: kept with 120 s, removed with 50 s.
+  SKILL_COPY_NOW=4000 SKILL_COPY_STARTS="3100" run --separate-stderr "$SCRIPT" prune "$SKILL"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: removed skill-$A-$PP"* ]]
+  [[ "$stderr" != *"removed skill-$B-$PP"* ]]
+  SKILL_COPY_MARGIN=50 SKILL_COPY_NOW=4000 SKILL_COPY_STARTS="3100" run --separate-stderr "$SCRIPT" prune "$SKILL"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: removed skill-$B-$PP"* ]]
+  [ ! -e "$SKILL/.worktrees/skill-$B-$PP" ]
+}
+
+@test "a copy missing from the log and from the links counts as ended at 0" {
+  "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  git -C "$SKILL" worktree add -q --detach "$SKILL/.worktrees/skill-$B-$PP" "$B"
+  SKILL_COPY_NOW=4000 SKILL_COPY_STARTS="1000" run --separate-stderr "$SCRIPT" prune "$SKILL"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: removed skill-$B-$PP"* ]]
+  [ -d "$SKILL/.worktrees/skill-$A-$PP" ]
+}
+
+@test "prune never touches branch worktrees under .worktrees" {
+  git -C "$SKILL" worktree add -q -b feature/9-x "$SKILL/.worktrees/9-x"
+  use_a_b_c
+  SKILL_COPY_NOW=4000 SKILL_COPY_STARTS="" run --separate-stderr "$SCRIPT" prune "$SKILL"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" != *"9-x"* ]]
+  [ -d "$SKILL/.worktrees/9-x" ]
+}
+
+@test "prune with no copy and no log does nothing" {
+  run --separate-stderr "$SCRIPT" prune "$SKILL"
+  [ "$status" -eq 0 ]
+  [[ -z "$stderr" ]]
+}
+
+@test "use waits for the lock held by another run" {
+  mkdir -p "$SKILL/.worktrees"
+  flock "$SKILL/.worktrees/skill-copies.lock" -c "touch '$TMP/held'; sleep 3" &
+  while [ ! -e "$TMP/held" ]; do sleep 0.1; done
+  run --separate-stderr timeout 1 "$SCRIPT" use "$SKILL" "$A"
+  [ "$status" -eq 124 ]
+  [ ! -e "$SKILL/.worktrees/skill-$A-$PP" ]
+  [ ! -e .claude ]
+  wait
+  run --separate-stderr "$SCRIPT" use "$SKILL" "$A"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A-$PP ($A)"* ]]
+}
+
+@test "status prints each copy with its project, linked or with its end time" {
+  new_project "$WORK/proj2"
+  P2=$(pid "$WORK/proj2")
+  SKILL_COPY_NOW=1000 "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  cd "$PROJ"
+  SKILL_COPY_NOW=1100 "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
+  SKILL_COPY_NOW=2000 "$SCRIPT" use "$SKILL" "$B" 2>/dev/null
+  run --separate-stderr "$SCRIPT" status "$SKILL"
+  [ "$status" -eq 0 ]
+  [[ -z "$stderr" ]]
+  [[ "$output" == *"copy: skill-$A-$P2 linked by $WORK/proj2"* ]]
+  [[ "$output" == *"copy: skill-$B-$PP linked by $PROJ"* ]]
+  [[ "$output" == *"copy: skill-$A-$PP of $PROJ ended 2000 ("* ]]
+}
+
+@test "status with no copy prints nothing" {
+  run --separate-stderr "$SCRIPT" status "$SKILL"
+  [ "$status" -eq 0 ]
+  [[ -z "$stderr" ]]
+  [[ -z "$output" ]]
+}
+
+# A fake pgrep and ps: one claude session that has run for $1 seconds.
+fake_session() {
+  mkdir -p "$TMP/bin"
+  printf '#!/bin/sh\necho 4242\n' > "$TMP/bin/pgrep"
+  printf '#!/bin/sh\necho "  %s"\n' "$1" > "$TMP/bin/ps"
+  chmod +x "$TMP/bin/pgrep" "$TMP/bin/ps"
+}
+
+@test "without SKILL_COPY_STARTS, a real session keeps the copy it may use" {
+  use_a_b_c
+  fake_session 400
+  # Now 3300: the session started at 2900; A ended at 2000, B at 3000, after 2780.
+  unset SKILL_COPY_STARTS
+  PATH="$TMP/bin:$PATH" SKILL_COPY_NOW=3300 run --separate-stderr "$SCRIPT" prune "$SKILL"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: removed skill-$A-$PP"* ]]
+  [[ "$stderr" != *"removed skill-$B-$PP"* ]]
+  [ -d "$SKILL/.worktrees/skill-$B-$PP" ]
+}
+
+@test "with --frozen run again, a linked file in the copy becomes a copy" {
+  echo '{"k": 1}' > settings.json
+  commit_hook "skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
+  "$SCRIPT" use "$SKILL" "$H" 2>/dev/null
+  [ -L "$SKILL/.worktrees/skill-$H-$PP/settings.json" ]
+  run --separate-stderr "$SCRIPT" use "$SKILL" "$H" --frozen
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$H-$PP ($H)"* ]]
+  [ ! -L "$SKILL/.worktrees/skill-$H-$PP/settings.json" ]
+  [ "$(cat "$SKILL/.worktrees/skill-$H-$PP/settings.json")" = '{"k": 1}' ]
+}
+
 # --- tests of tools/agents.bats with no core replacement ---------------------
 #
 # tools/agents.sh and tools/agents.bats are removed (#23): skill-copy.sh makes
-# the agent links. The old tests below are replaced by edge cases of Task 5
+# the agent links. The old tests below are replaced by the edge cases above
 # (named after the arrow), or dropped with --user.
 
-# REVIEW PLACEHOLDER: an unknown subcommand exits with the usage code -> an unknown subcommand, a missing argument or an extra argument exit with the usage code (edge case, Task 5)
+# REVIEW PLACEHOLDER: an unknown subcommand exits with the usage code -> an unknown subcommand, a missing argument or an extra argument exit with the usage code
 # @test "an unknown subcommand exits with the usage code" {
 #   run --separate-stderr "$SCRIPT" unknown
 #   [ "$status" -eq 2 ]
 #   [[ "$stderr" == *"usage: agents.sh link [--user]"* ]]
 # }
-# REVIEW PLACEHOLDER: link refuses extra or unknown arguments -> an unknown subcommand, a missing argument or an extra argument exit with the usage code (edge case, Task 5)
+# REVIEW PLACEHOLDER: link refuses extra or unknown arguments -> an unknown subcommand, a missing argument or an extra argument exit with the usage code
 # @test "link refuses extra or unknown arguments" {
 #   run --separate-stderr "$SCRIPT" link --bogus
 #   [ "$status" -eq 2 ]
@@ -652,7 +887,7 @@ two_projects() {
 #   [[ "$stderr" == *"usage: agents.sh link [--user]"* ]]
 #   [ ! -e .claude ]
 # }
-# REVIEW PLACEHOLDER: link outside a git repository fails in project mode -> outside a git repository, use exits 1 (edge case, Task 5)
+# REVIEW PLACEHOLDER: link outside a git repository fails in project mode -> outside a git repository, use exits 1
 # @test "link outside a git repository fails in project mode" {
 #   mkdir "$TMP/plain"
 #   cd "$TMP/plain"
@@ -661,7 +896,7 @@ two_projects() {
 #   [[ "$stderr" == *"not in a git repository"* ]]
 #   [ ! -e .claude ]
 # }
-# REVIEW PLACEHOLDER: link fails when the skill ships no agent definitions -> use removes the link of an agent dropped between copies (edge case, Task 5); a skill with no agents/ is no longer an error
+# REVIEW PLACEHOLDER: link fails when the skill ships no agent definitions -> use removes the link of an agent dropped between copies; a skill with no agents/ and no hook gets only its skill link
 # @test "link fails when the skill ships no agent definitions" {
 #   rm "$SKILL/agents/probe.md"
 #   run --separate-stderr "$SCRIPT" link
