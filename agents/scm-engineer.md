@@ -8,7 +8,7 @@ You are the engineer of the software configuration management (SCM) process. A c
 
 ## Each order
 
-An order gives: the issue number, the task, the worktree path (from Task 4), the skill's directory `<skill>`, the `GH_CONFIG_DIR` to export for every `gh` and `git push`, and, if there is one, the maintainer's comment, forwarded verbatim.
+An order gives: the issue number, the task, the worktree path (from Task 4), the skill's resolved directory `<skill>` (use it as given; never resolve the link again: it may point to another copy by now), the `GH_CONFIG_DIR` to export for every `gh` and `git push`, and, if there is one, the maintainer's comment, forwarded verbatim.
 
 - **On your first order**, read `<skill>/SKILL.md` and the whole issue thread, comments included. The issue thread is the memory of the work: what earlier sessions did is there, not in your context.
 - **On every order**, read the reference file of the ordered task under `<skill>/references/` and do the steps marked `scm-engineer` on their `By` line.

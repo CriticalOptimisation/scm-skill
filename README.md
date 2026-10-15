@@ -8,11 +8,11 @@ The skill is linked, not copied, so every project follows the same, current proc
 
 ```sh
 mkdir -p .claude/skills
-ln -s /path/to/scm-skill .claude/skills/software-configuration-management
-echo ".claude/skills/software-configuration-management" >> .git/info/exclude
+ln -s /path/to/scm-skill .claude/skills/scm-skill
+echo "/.claude/skills/scm-skill" >> .git/info/exclude
 ```
 
-The link stays local (`.git/info/exclude`), so the project repository never carries a path specific to one machine.
+The link stays local (`.git/info/exclude`), so the project repository never carries a path specific to one machine. The skill's name comes from the `name:` field of `SKILL.md`, not from the link: a link made under another name, such as `software-configuration-management`, keeps working, and the skill is listed as `scm-skill`.
 
 Then link the agent the process delegates to, from the project:
 
@@ -41,6 +41,22 @@ The process splits the work of an issue between two roles (see *Conductor and En
   ```
 
 Agents and skills are loaded when a session starts: after `agents.sh link`, start a new session.
+
+## Developing the skill
+
+In this repository, sessions load **fixed copies** of the skill, never a working tree. A checkout, a commit or a branch switch would otherwise change the skill under every running session, and a branch could not be tested in a new session. So:
+
+- Never link this repository to its own main worktree. Tools that follow links (`find -L`, `grep -R`, `diff -r`) would loop.
+- `.claude/skills/scm-skill` points to a detached worktree at one commit, `.worktrees/skill-<sha>`. Only the link moves. Since sessions resolve `<skill>` once when the skill loads (see *Paths* in `SKILL.md`), moving the link does not change the skill under a running session.
+
+The procedure (setup, testing a branch, after a merge, checking what is loaded) and its command, `skill-copy.sh`, are a separate skill: [skill-repo-development](https://github.com/CriticalOptimisation/skill-repo-development). Clone it next to this repository and link it from here:
+
+```sh
+ln -s ../../../skill-repo-development .claude/skills/skill-repo-development
+echo "/.claude/skills/skill-repo-development" >> .git/info/exclude
+```
+
+Projects that only *use* the skill link it as described in *Using it in a project*.
 
 ## Changing the process
 
