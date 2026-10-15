@@ -1,4 +1,5 @@
 ---
+name: scm-skill
 description: Guide for software configuration management processes. Use this skill for all software development workflow tasks, including issue management, branching, testing, reviewing, and implementing changes. Triggers on any request related to SCM processes, such as creating issues, starting branches, running tests, reviewing code, or updating code.
 ---
 
@@ -26,18 +27,18 @@ This skill keeps the surface area small: it helps you decide whether you are man
 
 ## Paths: the skill and the project
 
-Projects **link** this skill rather than copy it, so it may sit anywhere. In this skill, `<skill>/…` is a path inside the skill's own directory: the *Base directory for this skill* that Claude Code announces when it loads the skill. Never look for these files at the project root. Every other path is relative to the root of the project you work on. Project-specific configuration lives in the project, never in the skill.
+Projects install this skill as a **fixed copy** of one commit, reached through a link (`<skill>/tools/skill-copy.sh use`, see `README.md`), so it may sit anywhere. In this skill, `<skill>/…` is a path inside the skill's own directory: the *Base directory for this skill* that Claude Code announces when it loads the skill. Claude Code announces the **link path, not its target**, and the link may move to another copy of the skill while a session runs. So, when the skill loads, resolve the announced directory once (`readlink -f <base directory>`) and use only the resolved path for the rest of the session. Whenever you hand `<skill>` on, as in an order to the engineer, hand on the resolved path. Never look for these files at the project root. Every other path is relative to the root of the project you work on. Project-specific configuration lives in the project, never in the skill.
 
 ## Conductor and Engineer
 
 Two roles share the work of an issue, each on the model that suits it. Every step of the reference files says who does it on its `By` line.
 
 - **The conductor** is the main session, started on Sonnet (`claude --model sonnet`). It runs the process: the checks at the start of each task, board moves, worktree creation and removal, syncing `main`, auto-merge, review requests. It reads the maintainer's comments and assesses approval. It does not read what the engineer writes. A conductor that finds itself on another model says so once to the maintainer and carries on.
-- **The engineer** is the `scm-engineer` agent, on Opus (`<skill>/agents/scm-engineer.md`, installed by `<skill>/tools/agents.sh link`). It does the work that needs judgement: assessment, plan, documentation, tests, code, PR, review replies, rebase. It posts on GitHub and commits in the worktree itself.
+- **The engineer** is the `scm-engineer` agent, on Opus (`<skill>/agents/scm-engineer.md`, installed by `<skill>/tools/skill-copy.sh use` with the skill, one link per agent). It does the work that needs judgement: assessment, plan, documentation, tests, code, PR, review replies, rebase. It posts on GitHub and commits in the worktree itself.
 
 **Starting the engineer.** The conductor starts one engineer per issue per session, in the background (`Agent` with `subagent_type: scm-engineer`), and gives every later order to the same engineer with `SendMessage`, so the engineer keeps its context from task to task. A new conductor session starts a new engineer, which catches up from the issue thread: the issue thread is the durable memory of the work.
 
-**An order** gives the issue number, the task, the worktree path (from Task 4), the skill's directory `<skill>`, the `GH_CONFIG_DIR` to use, and the maintainer's comment, forwarded verbatim, when there is one. After a deliverable, the conductor orders either:
+**An order** gives the issue number, the task, the worktree path (from Task 4), the skill's resolved directory `<skill>` (see *Paths*), the `GH_CONFIG_DIR` to use, and the maintainer's comment, forwarded verbatim, when there is one. After a deliverable, the conductor orders either:
 - *iterate*, with the comment, when the comment does not approve. A dubious approval is not an approval: the conductor orders *iterate*. Real approvals are explicit.
 - *move on to Task N*, when the comment approves, after moving the card.
 
