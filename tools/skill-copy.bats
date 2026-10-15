@@ -538,12 +538,12 @@ two_projects() {
 
 # --- edge cases --------------------------------------------------------------
 
-USAGE="usage: skill-copy.sh use <skill repo> <ref> [--skills-dir <dir>] [--agents-dir <dir>] [--clone-to <path>] [--frozen] | prune <skill repo> | status <skill repo>"
+USAGE="usage: skill-copy.sh use <skill repo> <ref> [--skills-dir <dir>] [--agents-dir <dir>] [--clone-to <path>] [--frozen] | update <copy> | prune <skill repo> | status <skill repo>"
 
 @test "an unknown subcommand, a missing argument or an extra argument exit with the usage code" {
   before=$(snapshot)
   for args in "" "unknown" "use" "use x" "use x y --bogus" "use x y --skills-dir" \
-              "prune" "prune x y" "status" "status x y"; do
+              "update" "update x y" "prune" "prune x y" "status" "status x y"; do
     run --separate-stderr "$SCRIPT" $args
     [ "$status" -eq 2 ]
     [[ "$stderr" == *"skill-copy: $USAGE"* ]]

@@ -5,8 +5,9 @@
 # PR #2), and extended: run from the main worktree of the using project, which
 # may be the skill's own repository; one copy per project, pointing back to it
 # through USER_PROJECT; one link per agent; the skill's hook; frozen copies;
-# configurable link directories; pruning across projects. Contract: README.md,
-# "Using it in a project" and "The skill-copy hook".
+# configurable link directories; pruning across projects; update of a copy to
+# origin/main (#26). Contract: README.md, "Using it in a project" and "The
+# skill-copy hook".
 #
 # Exit codes: 0 success; 1 failure; 2 usage; 3 refused for safety.
 set -uo pipefail
@@ -17,7 +18,7 @@ readonly MARGIN=${SKILL_COPY_MARGIN:-120}
 say() { printf 'skill-copy: %s\n' "$*" >&2; }
 die() { local code=$1; shift; say "$@"; exit "$code"; }
 usage() {
-  die "$E_USAGE" "usage: skill-copy.sh use <skill repo> <ref> [--skills-dir <dir>] [--agents-dir <dir>] [--clone-to <path>] [--frozen] | prune <skill repo> | status <skill repo>"
+  die "$E_USAGE" "usage: skill-copy.sh use <skill repo> <ref> [--skills-dir <dir>] [--agents-dir <dir>] [--clone-to <path>] [--frozen] | update <copy> | prune <skill repo> | status <skill repo>"
 }
 
 now() { echo "${SKILL_COPY_NOW:-$(date +%s)}"; }
@@ -266,6 +267,12 @@ cmd_use() {
     echo "$project/$skills_dir/$name"
     for f in "${agents[@]}"; do echo "$project/$agents_dir/$f"; done
   } > "$S/.worktrees/$copy.links.new" && mv -f "$S/.worktrees/$copy.links.new" "$S/.worktrees/$copy.links"
+  # The marker of a frozen copy, which update repeats.
+  if [[ -n $frozen ]]; then
+    : > "$S/.worktrees/$copy.frozen" || die "$E_FAIL" "cannot write $S/.worktrees/$copy.frozen"
+  else
+    rm -f -- "$S/.worktrees/$copy.frozen"
+  fi
 
   [[ $(current_of "$project") == "$copy" ]] || echo "$(now) $copy $project" >> "$LOG"
   say "$name -> $copy ($ref)"
@@ -303,7 +310,7 @@ prune_copies() {
     end=${ends[$copy]:-0}
     [[ -n $oldest ]] && (( end >= oldest - MARGIN )) && continue
     if git -C "$S" worktree remove "$dir" 2>/dev/null; then
-      rm -f -- "$S/.worktrees/$copy.links"
+      rm -f -- "$S/.worktrees/$copy.links" "$S/.worktrees/$copy.frozen"
       say "removed $copy"
     else
       say "warning: $copy could not be removed (changes in it?); kept"
@@ -341,12 +348,62 @@ cmd_status() {
   return 0
 }
 
+# Brings the project's copy up to origin/main: the skill repository, the
+# project, the link directories and --frozen all come from the copy. Prints
+# "updated <old> <new> <copy dir>", "current <sha>" or "kept <sha> ahead|diverged".
+# Offline or refused, the links do not move.
+cmd_update() {
+  local copydir copy project head target old new l rc
+  local -a opts=()
+  copydir=$(realpath -e -- "$1" 2>/dev/null) || die "$E_FAIL" "not a copy of a skill: $1"
+  copy=${copydir##*/}
+  [[ $copy == skill-* && -f $copydir/USER_PROJECT ]] || die "$E_FAIL" "not a copy of a skill: $1"
+  set_skill_repo "$copydir"
+  [[ $copydir == "$S/.worktrees/$copy" ]] || die "$E_FAIL" "not a copy of a skill: $1"
+  project=$(project_root) || exit
+  [[ $(< "$copydir/USER_PROJECT") == "$project" ]] ||
+    die "$E_REFUSED" "$copy belongs to another project: $(< "$copydir/USER_PROJECT")"
+
+  # The link directories: the skill link first, then the agent links.
+  if [[ -f $S/.worktrees/$copy.links ]]; then
+    {
+      IFS= read -r l && opts+=(--skills-dir "$(dirname -- "${l#"$project"/}")")
+      IFS= read -r l && opts+=(--agents-dir "$(dirname -- "${l#"$project"/}")")
+    } < "$S/.worktrees/$copy.links"
+  fi
+  [[ -f $S/.worktrees/$copy.frozen ]] && opts+=(--frozen)
+
+  git -C "$S" fetch -q origin 2>/dev/null || die "$E_FAIL" "warning: fetch from origin failed; links not moved"
+  head=$(git -C "$copydir" rev-parse HEAD) || die "$E_FAIL" "git rev-parse failed in $copydir"
+  target=$(git -C "$S" rev-parse -q --verify 'origin/main^{commit}') || die "$E_FAIL" "no origin/main in $S"
+  old=${head:0:12} new=${target:0:12}
+  if [[ $head == "$target" ]]; then
+    echo "current $old"
+    return 0
+  elif git -C "$S" merge-base --is-ancestor "$target" "$head"; then
+    echo "kept $old ahead"
+    return 0
+  elif ! git -C "$S" merge-base --is-ancestor "$head" "$target"; then
+    echo "kept $old diverged"
+    return 0
+  fi
+
+  ( cmd_use "$S" origin/main "${opts[@]}" ) >&2
+  rc=$?
+  # A copy that pruning could not remove fails use after the links moved.
+  if (( rc )) && [[ $(current_of "$project") != "skill-$new-$(pid "$project")" ]]; then
+    die "$rc" "warning: update to $new failed; links not moved"
+  fi
+  echo "updated $old $new $S/.worktrees/skill-$new-$(pid "$project")"
+}
+
 dispatch() {
   (( $# >= 1 )) || usage
   local cmd=$1
   shift
   case $cmd in
     use)    (( $# >= 2 )) || usage; cmd_use "$@" ;;
+    update) (( $# == 1 )) || usage; cmd_update "$1" ;;
     prune)  (( $# == 1 )) || usage; cmd_prune "$1" ;;
     status) (( $# == 1 )) || usage; cmd_status "$1" ;;
     *)      usage ;;
