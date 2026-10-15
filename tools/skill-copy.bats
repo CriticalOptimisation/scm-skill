@@ -9,6 +9,10 @@
 #
 # The skill has three commits, A, B and C; at each, SKILL.md is named
 # demo-skill and agents/probe.md holds the commit's letter.
+#
+# A copy belongs to one project: the copy of commit X for the project at path
+# P is skill-<sha12 of X>-<pid P>, and its USER_PROJECT file holds P. $PP is
+# the pid of $PROJ.
 
 bats_require_minimum_version 1.5.0
 
@@ -36,6 +40,7 @@ setup() {
   git push -q -u origin main
 
   new_project "$PROJ"
+  PP=$(pid "$PROJ")
   # A session started at 0 keeps every copy, unless a test says otherwise.
   export SKILL_COPY_STARTS=0
   export SKILL_COPY_NOW=1000
@@ -83,6 +88,12 @@ sha12() {
   git rev-parse "$1" | cut -c1-12
 }
 
+# pid <project path>: the project's part of a copy's name, the first 8 hex
+# digits of the SHA-1 of its absolute path.
+pid() {
+  printf '%s' "$1" | sha1sum | cut -c1-8
+}
+
 # commit_hook <body>: commits tools/skill-copy-hook.sh (not executable) in the
 # skill, with /settings.json ignored, and sets H to the new commit.
 commit_hook() {
@@ -127,24 +138,30 @@ log() {
 
 # --- use -------------------------------------------------------------------
 
-# REVIEW PLACEHOLDER: link keeps the project clean: the link is excluded from git -> use creates a detached copy in the skill repository, links it relatively, excludes the link and logs the move
+# REVIEW PLACEHOLDER: link keeps the project clean: the link is excluded from git -> use creates the project's own detached copy in the skill repository, links it relatively, excludes the link and logs the move
 # @test "link keeps the project clean: the link is excluded from git" {
 #   "$SCRIPT" link
 #   grep -qxF '/.claude/agents/probe.md' .git/info/exclude
 #   [ -z "$(git status --porcelain)" ]
 # }
-@test "use creates a detached copy in the skill repository, links it relatively, excludes the link and logs the move" {
+@test "use creates the project's own detached copy in the skill repository, links it relatively, excludes the link and logs the move" {
   run --separate-stderr "$SCRIPT" use "$SKILL" "$A"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A ($A)"* ]]
-  [ -d "$SKILL/.worktrees/skill-$A" ]
-  [ "$(git -C "$SKILL/.worktrees/skill-$A" rev-parse HEAD | cut -c1-12)" = "$A" ]
-  [ -z "$(git -C "$SKILL/.worktrees/skill-$A" branch --show-current)" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A-$PP ($A)"* ]]
+  [ -d "$SKILL/.worktrees/skill-$A-$PP" ]
+  [ "$(git -C "$SKILL/.worktrees/skill-$A-$PP" rev-parse HEAD | cut -c1-12)" = "$A" ]
+  [ -z "$(git -C "$SKILL/.worktrees/skill-$A-$PP" branch --show-current)" ]
   [ -L .claude/skills/demo-skill ]
-  [ "$(readlink .claude/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$A" ]
-  [ "$(readlink -f .claude/skills/demo-skill)" = "$SKILL/.worktrees/skill-$A" ]
+  [ "$(readlink .claude/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$A-$PP" ]
+  [ "$(readlink -f .claude/skills/demo-skill)" = "$SKILL/.worktrees/skill-$A-$PP" ]
   grep -qxF /.claude/skills/demo-skill .git/info/exclude
-  [ "$(log)" = "1000 skill-$A $PROJ" ]
+  [ "$(cat "$SKILL/.worktrees/skill-$A-$PP/USER_PROJECT")" = "$PROJ" ]
+  [ ! -L "$SKILL/.worktrees/skill-$A-$PP/USER_PROJECT" ]
+  # The skill's .gitignore does not ignore USER_PROJECT: the skill repository's
+  # exclude does, so that a copy of any commit stays clean.
+  grep -qxF /USER_PROJECT "$SKILL/.git/info/exclude"
+  [ -z "$(git -C "$SKILL/.worktrees/skill-$A-$PP" status --porcelain)" ]
+  [ "$(log)" = "1000 skill-$A-$PP $PROJ" ]
   [ -z "$(git status --porcelain)" ]
   [ -z "$(git -C "$SKILL" status --porcelain)" ]
 }
@@ -163,7 +180,7 @@ log() {
   before=$(snapshot; log)
   SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" use "$SKILL" "$A"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A ($A)"* ]]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A-$PP ($A)"* ]]
   [ "$(snapshot; log)" = "$before" ]
 }
 
@@ -182,10 +199,10 @@ log() {
   git commit -qm "own agent"
   run --separate-stderr "$SCRIPT" use "$SKILL" "$A"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A ($A)"* ]]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A-$PP ($A)"* ]]
   [ ! -L .claude/agents ]
   [ -L .claude/agents/probe.md ]
-  [ "$(readlink .claude/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$A/agents/probe.md" ]
+  [ "$(readlink .claude/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$A-$PP/agents/probe.md" ]
   [ "$(cat .claude/agents/probe.md)" = A ]
   grep -qxF /.claude/agents/probe.md .git/info/exclude
   [ ! -L .claude/agents/mine.md ]
@@ -198,24 +215,26 @@ log() {
   "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
   SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" use "$SKILL" "$B"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$B ($B)"* ]]
-  [ "$(readlink .claude/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$B" ]
-  [ "$(readlink .claude/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$B/agents/probe.md" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$B-$PP ($B)"* ]]
+  [ "$(readlink .claude/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$B-$PP" ]
+  [ "$(readlink .claude/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$B-$PP/agents/probe.md" ]
   [ "$(cat .claude/agents/probe.md)" = B ]
-  [ "$(git -C "$SKILL/.worktrees/skill-$A" rev-parse HEAD | cut -c1-12)" = "$A" ]
-  [ "$(tail -n 1 "$SKILL/.worktrees/skill-$A/SKILL.md")" = A ]
-  [ -z "$(git -C "$SKILL/.worktrees/skill-$A" status --porcelain)" ]
-  [ "$(log)" = "$(printf '1000 skill-%s %s\n2000 skill-%s %s' "$A" "$PROJ" "$B" "$PROJ")" ]
+  [ "$(git -C "$SKILL/.worktrees/skill-$A-$PP" rev-parse HEAD | cut -c1-12)" = "$A" ]
+  [ "$(tail -n 1 "$SKILL/.worktrees/skill-$A-$PP/SKILL.md")" = A ]
+  [ -z "$(git -C "$SKILL/.worktrees/skill-$A-$PP" status --porcelain)" ]
+  [ "$(log)" = "$(printf '1000 skill-%s-%s %s\n2000 skill-%s-%s %s' "$A" "$PP" "$PROJ" "$B" "$PP" "$PROJ")" ]
 }
 
 @test "with the skill repository as the project, the copy and the links are in it, and find -L terminates" {
   cd "$SKILL"
+  SP=$(pid "$SKILL")
   run --separate-stderr "$SCRIPT" use . "$A"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A ($A)"* ]]
-  [ "$(readlink .claude/skills/demo-skill)" = "../../.worktrees/skill-$A" ]
-  [ "$(readlink .claude/agents/probe.md)" = "../../.worktrees/skill-$A/agents/probe.md" ]
-  [ "$(log)" = "1000 skill-$A $SKILL" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A-$SP ($A)"* ]]
+  [ "$(readlink .claude/skills/demo-skill)" = "../../.worktrees/skill-$A-$SP" ]
+  [ "$(readlink .claude/agents/probe.md)" = "../../.worktrees/skill-$A-$SP/agents/probe.md" ]
+  [ "$(cat ".worktrees/skill-$A-$SP/USER_PROJECT")" = "$SKILL" ]
+  [ "$(log)" = "1000 skill-$A-$SP $SKILL" ]
   [ -z "$(git status --porcelain)" ]
   run --separate-stderr timeout 10 find -L . -name SKILL.md
   [ "$status" -eq 0 ]
@@ -235,10 +254,10 @@ log() {
   ln -s "$SKILL" "$TMP/skill-link"
   run --separate-stderr "$SCRIPT" use "$TMP/skill-link" "$A"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A ($A)"* ]]
-  [ "$(readlink .claude/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$A" ]
-  [ "$(readlink .claude/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$A/agents/probe.md" ]
-  [ "$(log)" = "1000 skill-$A $PROJ" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A-$PP ($A)"* ]]
+  [ "$(readlink .claude/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$A-$PP" ]
+  [ "$(readlink .claude/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$A-$PP/agents/probe.md" ]
+  [ "$(log)" = "1000 skill-$A-$PP $PROJ" ]
 }
 
 # REVIEW PLACEHOLDER: link adds no exclude entry for a path git already ignores -> use adds no exclude entry for a link git already ignores
@@ -256,7 +275,7 @@ log() {
   git commit -qam "ignore .claude"
   run --separate-stderr "$SCRIPT" use "$SKILL" "$A"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A ($A)"* ]]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A-$PP ($A)"* ]]
   [ -L .claude/skills/demo-skill ]
   [ "$(grep -cF /.claude/ .git/info/exclude || true)" -eq 0 ]
   [ -z "$(git status --porcelain)" ]
@@ -266,27 +285,29 @@ log() {
 
 @test "use clones a missing skill repository next to the project" {
   new_project "$TMP/elsewhere/proj2"
+  P2=$(pid "$TMP/elsewhere/proj2")
   url="file://$REMOTES/demo-skill.git"
   run --separate-stderr "$SCRIPT" use "$url" origin/main
   [ "$status" -eq 0 ]
   [[ "$stderr" == *"skill-copy: cloned $url into $TMP/elsewhere/demo-skill"* ]]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$C (origin/main)"* ]]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$C-$P2 (origin/main)"* ]]
   [ -d "$TMP/elsewhere/demo-skill/.git" ]
-  [ "$(readlink .claude/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$C" ]
-  [ "$(readlink -f .claude/skills/demo-skill)" = "$TMP/elsewhere/demo-skill/.worktrees/skill-$C" ]
+  [ "$(readlink .claude/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$C-$P2" ]
+  [ "$(readlink -f .claude/skills/demo-skill)" = "$TMP/elsewhere/demo-skill/.worktrees/skill-$C-$P2" ]
   [ -z "$(git status --porcelain)" ]
 }
 
 @test "use clones a missing skill repository where --clone-to says" {
   new_project "$TMP/elsewhere/proj2"
+  P2=$(pid "$TMP/elsewhere/proj2")
   url="file://$REMOTES/demo-skill.git"
   run --separate-stderr "$SCRIPT" use "$url" origin/main --clone-to "$TMP/clones/my-skill"
   [ "$status" -eq 0 ]
   [[ "$stderr" == *"skill-copy: cloned $url into $TMP/clones/my-skill"* ]]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$C (origin/main)"* ]]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$C-$P2 (origin/main)"* ]]
   [ ! -e "$TMP/elsewhere/demo-skill" ]
-  [ "$(readlink .claude/skills/demo-skill)" = "../../../../clones/my-skill/.worktrees/skill-$C" ]
-  [ "$(readlink -f .claude/skills/demo-skill)" = "$TMP/clones/my-skill/.worktrees/skill-$C" ]
+  [ "$(readlink .claude/skills/demo-skill)" = "../../../../clones/my-skill/.worktrees/skill-$C-$P2" ]
+  [ "$(readlink -f .claude/skills/demo-skill)" = "$TMP/clones/my-skill/.worktrees/skill-$C-$P2" ]
 }
 
 # --- the hook: tools/skill-copy-hook.sh of the copy --------------------------
@@ -299,11 +320,11 @@ say() { :; }
 cd /"
   run --separate-stderr "$SCRIPT" use "$SKILL" "$H"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$H ($H)"* ]]
-  [ "$(cat "$TMP/hook.args")" = "$(printf '%s\n' "$SKILL/.worktrees/skill-$H/tools/skill-copy-hook.sh" "$SKILL/.worktrees/skill-$H" "$PROJ")" ]
-  [ "$(readlink .claude/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$H" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$H-$PP ($H)"* ]]
+  [ "$(cat "$TMP/hook.args")" = "$(printf '%s\n' "$SKILL/.worktrees/skill-$H-$PP/tools/skill-copy-hook.sh" "$SKILL/.worktrees/skill-$H-$PP" "$PROJ")" ]
+  [ "$(readlink .claude/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$H-$PP" ]
   grep -qxF /.claude/skills/demo-skill .git/info/exclude
-  [ "$(log)" = "1000 skill-$H $PROJ" ]
+  [ "$(log)" = "1000 skill-$H-$PP $PROJ" ]
 }
 
 @test "when the hook fails, use exits 1 and the links do not move" {
@@ -311,10 +332,10 @@ cd /"
   commit_hook "return 1"
   SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" use "$SKILL" "$H"
   [ "$status" -eq 1 ]
-  [[ "$stderr" == *"skill-copy: the hook of skill-$H failed; links not moved"* ]]
-  [ "$(readlink .claude/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$A" ]
-  [ "$(readlink .claude/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$A/agents/probe.md" ]
-  [ "$(log)" = "1000 skill-$A $PROJ" ]
+  [[ "$stderr" == *"skill-copy: the hook of skill-$H-$PP failed; links not moved"* ]]
+  [ "$(readlink .claude/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$A-$PP" ]
+  [ "$(readlink .claude/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$A-$PP/agents/probe.md" ]
+  [ "$(log)" = "1000 skill-$A-$PP $PROJ" ]
 }
 
 @test "the hook's skill_copy_link links a project file into the copy, relatively" {
@@ -323,13 +344,27 @@ cd /"
 skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
   run --separate-stderr "$SCRIPT" use "$SKILL" "$H"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$H ($H)"* ]]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$H-$PP ($H)"* ]]
   [ -z "$(cat "$TMP/hook.frozen")" ]
-  copy="$SKILL/.worktrees/skill-$H"
+  copy="$SKILL/.worktrees/skill-$H-$PP"
   [ -L "$copy/settings.json" ]
   [[ "$(readlink "$copy/settings.json")" != /* ]]
   [ "$(readlink -f "$copy/settings.json")" = "$PROJ/settings.json" ]
   [ -z "$(git -C "$copy" status --porcelain)" ]
+}
+
+@test "two projects on the same commit: each copy's hook links to its own project's file" {
+  echo one > settings.json
+  commit_hook "skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
+  "$SCRIPT" use "$SKILL" "$H" 2>/dev/null
+  new_project "$WORK/proj2"
+  P2=$(pid "$WORK/proj2")
+  echo two > settings.json
+  run --separate-stderr "$SCRIPT" use "$SKILL" "$H"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$H-$P2 ($H)"* ]]
+  [ "$(cat "$SKILL/.worktrees/skill-$H-$PP/settings.json")" = one ]
+  [ "$(cat "$SKILL/.worktrees/skill-$H-$P2/settings.json")" = two ]
 }
 
 @test "with --frozen, the hook's skill_copy_link copies the project file instead" {
@@ -338,9 +373,9 @@ skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
 skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
   run --separate-stderr "$SCRIPT" use "$SKILL" "$H" --frozen
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$H ($H)"* ]]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$H-$PP ($H)"* ]]
   [ "$(cat "$TMP/hook.frozen")" = 1 ]
-  copy="$SKILL/.worktrees/skill-$H"
+  copy="$SKILL/.worktrees/skill-$H-$PP"
   [ ! -L "$copy/settings.json" ]
   [ "$(cat "$copy/settings.json")" = '{"k": 1}' ]
   echo changed > settings.json
@@ -349,9 +384,10 @@ skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
 
 # --- pruning ---------------------------------------------------------------
 #
-# A copy is kept while any project recorded in the log still has a link into
-# it, or while a running session may use it: when it stopped being current
-# later than the oldest session start minus the margin (120 s by default).
+# A copy belongs to the one project named in its USER_PROJECT file. It is kept
+# while that project still has a link into it, or while a running session may
+# use it: when it stopped being current later than the oldest session start
+# minus the margin (120 s by default).
 # With SKILL_COPY_STARTS empty, no session runs.
 
 # A current from 1000 to 2000, B from 2000 to 3000, C from 3000 on.
@@ -361,38 +397,62 @@ use_a_b_c() {
   SKILL_COPY_NOW=3000 "$SCRIPT" use "$SKILL" "$C" 2>/dev/null
 }
 
-# Project proj2 uses A at 1000; this project uses A at 1100, then B at 2000.
+# Project proj2 uses A at 1000; this project uses A at 1100. Each has its own
+# copy of A.
 two_projects() {
   new_project "$WORK/proj2"
+  P2=$(pid "$WORK/proj2")
   SKILL_COPY_NOW=1000 "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
   cd "$PROJ"
   SKILL_COPY_NOW=1100 "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
 }
 
-@test "a copy still linked by another project is kept when this project moves on" {
+@test "two projects on the same commit get two copies, each pointing back to its own project" {
+  two_projects
+  [ "$P2" != "$PP" ]
+  [ "$(readlink -f "$WORK/proj2/.claude/skills/demo-skill")" = "$SKILL/.worktrees/skill-$A-$P2" ]
+  [ "$(readlink -f .claude/skills/demo-skill)" = "$SKILL/.worktrees/skill-$A-$PP" ]
+  [ "$(cat "$SKILL/.worktrees/skill-$A-$P2/USER_PROJECT")" = "$WORK/proj2" ]
+  [ "$(cat "$SKILL/.worktrees/skill-$A-$PP/USER_PROJECT")" = "$PROJ" ]
+  [ "$(log)" = "$(printf '1000 skill-%s-%s %s\n1100 skill-%s-%s %s' \
+    "$A" "$P2" "$WORK/proj2" "$A" "$PP" "$PROJ")" ]
+}
+
+@test "when this project moves on, its old copy goes and the other project's copy of the same commit stays" {
   export SKILL_COPY_STARTS=""
   two_projects
   SKILL_COPY_NOW=2000 run --separate-stderr "$SCRIPT" use "$SKILL" "$B"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$B ($B)"* ]]
-  [[ "$stderr" != *"removed skill-$A"* ]]
-  [ -d "$SKILL/.worktrees/skill-$A" ]
-  [ "$(readlink -f "$WORK/proj2/.claude/skills/demo-skill")" = "$SKILL/.worktrees/skill-$A" ]
-  [ "$(log)" = "$(printf '1000 skill-%s %s\n1100 skill-%s %s\n2000 skill-%s %s' \
-    "$A" "$WORK/proj2" "$A" "$PROJ" "$B" "$PROJ")" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$B-$PP ($B)"* ]]
+  [[ "$stderr" == *"skill-copy: removed skill-$A-$PP"* ]]
+  [[ "$stderr" != *"removed skill-$A-$P2"* ]]
+  [ ! -e "$SKILL/.worktrees/skill-$A-$PP" ]
+  [ -d "$SKILL/.worktrees/skill-$A-$P2" ]
+  [ "$(readlink -f "$WORK/proj2/.claude/skills/demo-skill")" = "$SKILL/.worktrees/skill-$A-$P2" ]
 }
 
-@test "once the other project's links are gone, prune removes the copy" {
+@test "once its project's links are gone, prune removes the copy" {
   export SKILL_COPY_STARTS=""
   two_projects
-  SKILL_COPY_NOW=2000 "$SCRIPT" use "$SKILL" "$B" 2>/dev/null
   rm "$WORK/proj2/.claude/skills/demo-skill" "$WORK/proj2/.claude/agents/probe.md"
   SKILL_COPY_NOW=3000 run --separate-stderr "$SCRIPT" prune "$SKILL"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: removed skill-$A"* ]]
-  [ ! -e "$SKILL/.worktrees/skill-$A" ]
-  [[ "$(git -C "$SKILL" worktree list)" != *"skill-$A"* ]]
-  [ -d "$SKILL/.worktrees/skill-$B" ]
+  [[ "$stderr" == *"skill-copy: removed skill-$A-$P2"* ]]
+  [[ "$stderr" != *"removed skill-$A-$PP"* ]]
+  [ ! -e "$SKILL/.worktrees/skill-$A-$P2" ]
+  [[ "$(git -C "$SKILL" worktree list)" != *"skill-$A-$P2"* ]]
+  [ -d "$SKILL/.worktrees/skill-$A-$PP" ]
+}
+
+@test "once its project is gone, prune removes the copy" {
+  export SKILL_COPY_STARTS=""
+  two_projects
+  rm -rf "$WORK/proj2"
+  SKILL_COPY_NOW=3000 run --separate-stderr "$SCRIPT" prune "$SKILL"
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"skill-copy: removed skill-$A-$P2"* ]]
+  [ ! -e "$SKILL/.worktrees/skill-$A-$P2" ]
+  [ -d "$SKILL/.worktrees/skill-$A-$PP" ]
 }
 
 @test "prune keeps a copy that stopped being current within the margin before the oldest session" {
@@ -400,22 +460,22 @@ two_projects() {
   # Oldest session at 3050, minus 120 s: A (ended 2000) goes, B (ended 3000) stays.
   SKILL_COPY_NOW=4000 SKILL_COPY_STARTS="3500 3050" run --separate-stderr "$SCRIPT" prune "$SKILL"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: removed skill-$A"* ]]
-  [[ "$stderr" != *"removed skill-$B"* ]]
-  [ ! -e "$SKILL/.worktrees/skill-$A" ]
-  [ -d "$SKILL/.worktrees/skill-$B" ]
-  [ -d "$SKILL/.worktrees/skill-$C" ]
+  [[ "$stderr" == *"skill-copy: removed skill-$A-$PP"* ]]
+  [[ "$stderr" != *"removed skill-$B-$PP"* ]]
+  [ ! -e "$SKILL/.worktrees/skill-$A-$PP" ]
+  [ -d "$SKILL/.worktrees/skill-$B-$PP" ]
+  [ -d "$SKILL/.worktrees/skill-$C-$PP" ]
 }
 
 @test "with no session and no other project, only the current copy is kept" {
   use_a_b_c
   SKILL_COPY_NOW=4000 SKILL_COPY_STARTS="" run --separate-stderr "$SCRIPT" prune "$SKILL"
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: removed skill-$A"* ]]
-  [[ "$stderr" == *"skill-copy: removed skill-$B"* ]]
-  [ ! -e "$SKILL/.worktrees/skill-$A" ]
-  [ ! -e "$SKILL/.worktrees/skill-$B" ]
-  [ "$(readlink -f .claude/skills/demo-skill)" = "$SKILL/.worktrees/skill-$C" ]
+  [[ "$stderr" == *"skill-copy: removed skill-$A-$PP"* ]]
+  [[ "$stderr" == *"skill-copy: removed skill-$B-$PP"* ]]
+  [ ! -e "$SKILL/.worktrees/skill-$A-$PP" ]
+  [ ! -e "$SKILL/.worktrees/skill-$B-$PP" ]
+  [ "$(readlink -f .claude/skills/demo-skill)" = "$SKILL/.worktrees/skill-$C-$PP" ]
 }
 
 # --- no dependency on Claude -------------------------------------------------
@@ -428,9 +488,9 @@ two_projects() {
   HOME="$TMP/empty-home" PATH="$TMP/bin:$PATH" run --separate-stderr \
     "$SCRIPT" use "$SKILL" "$A" --skills-dir ext/skills --agents-dir ext/agents
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A ($A)"* ]]
-  [ "$(readlink ext/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$A" ]
-  [ "$(readlink ext/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$A/agents/probe.md" ]
+  [[ "$stderr" == *"skill-copy: demo-skill -> skill-$A-$PP ($A)"* ]]
+  [ "$(readlink ext/skills/demo-skill)" = "../../../demo-skill/.worktrees/skill-$A-$PP" ]
+  [ "$(readlink ext/agents/probe.md)" = "../../../demo-skill/.worktrees/skill-$A-$PP/agents/probe.md" ]
   grep -qxF /ext/skills/demo-skill .git/info/exclude
   grep -qxF /ext/agents/probe.md .git/info/exclude
   [ ! -e .claude ]
