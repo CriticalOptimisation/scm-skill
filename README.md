@@ -30,7 +30,17 @@ git clone https://github.com/CriticalOptimisation/scm-skill.git ../scm-skill
 5. logs `<epoch> skill-<sha12>-<pid> <project>` in `<skill repo>/.worktrees/skill-copies.log`;
 6. prunes the copies that nothing uses any more.
 
-Agents and skills are loaded when a session starts: after `use`, start a new session.
+Agents and skills are loaded when a session starts: after `use`, start a new session. The conductor's own update at session start is the exception (see *Updating* below).
+
+**Updating.** `skill-copy.sh update <copy>`, run from the main worktree of the project, brings the project's copy up to `origin/main` of the skill's repository. `<copy>` is the copy the project uses, the resolved target of its skill link (`readlink -f .claude/skills/scm-skill`); the conductor runs it at the start of every session (see *Conductor and Engineer* in `SKILL.md`). It finds everything from the copy: the skill repository is the copy's own repository, the project is the copy's `USER_PROJECT`, the link directories are those recorded in `<skill repo>/.worktrees/<copy>.links`, and `--frozen` is repeated when the copy was made with it (`use --frozen` writes a marker `<skill repo>/.worktrees/<copy>.frozen`, which `use` without `--frozen` removes). It fetches `origin`, then compares the copy's commit with `origin/main`, and prints one line on stdout:
+
+| Line | Meaning | Exit |
+|---|---|---|
+| `updated <old sha12> <new sha12> <new copy dir>` | the copy was behind: `use <skill repo> origin/main` ran with the same options and moved the links | `0` |
+| `current <sha12>` | the copy is at `origin/main`: nothing changes | `0` |
+| `kept <sha12> ahead` or `kept <sha12> diverged` | the copy is not behind `origin/main`: nothing changes | `0` |
+
+When the fetch fails, `update` warns and exits `1` without falling back to local refs: offline, the links never move. A refusal or failure of `use` is passed on with its exit code, after a warning, and the links do not move. `update` refuses with exit `3` when it is not run from the main worktree of the project or when the copy belongs to another project, and exits `1` when `<copy>` is not a copy of the skill. A copy made with `--frozen` before the marker existed is updated as a linked copy: run `use … --frozen` once again to record it. `update` follows `origin/main` of the repository the project already links; the new commit's hook runs with your rights, as with `use` (see *The skill-copy hook*).
 
 | Option | Effect |
 |---|---|
@@ -43,7 +53,7 @@ Nothing depends on Claude Code: with both directories set elsewhere, `use` works
 
 **Pruning.** `use` prunes; `skill-copy.sh prune <skill repo>` prunes on demand. A copy is kept while its project, the one in its `USER_PROJECT`, is still there and still has a link into it (the link itself is checked, not only the log: `use` records the links of each copy in `<skill repo>/.worktrees/<copy>.links`), or while a running session may use it: when it stopped being current later than the start of the oldest `claude` process minus a margin, `SKILL_COPY_MARGIN` seconds (120 by default). With no session, only the linked copies stay; a copy whose project was deleted goes. A copy with changes in it is never removed. `skill-copy.sh status <skill repo>` lists the copies, the project of each and when each stopped being current. `SKILL_COPY_STARTS` (session start times) and `SKILL_COPY_NOW` (the clock) replace the process list and the clock in tests.
 
-**Refusals.** `use` refuses, with exit code `3` and before changing anything, when it is not run from the main worktree of the project; when `/.worktrees/` is not ignored in the skill repository; when `SKILL.md` has no `name:` field at `<ref>`; and when something other than a link to a copy (`.worktrees/skill-*`) is in the way of a link: a file, a directory, a link elsewhere or a dangling link. Exit codes, as for `tools/worktree.sh`: `0` success, `1` failure, `2` usage, `3` refused for safety.
+**Refusals.** `use` (and `update`, through it) refuses, with exit code `3` and before changing anything, when it is not run from the main worktree of the project; when `/.worktrees/` is not ignored in the skill repository; when `SKILL.md` has no `name:` field at `<ref>`; and when something other than a link to a copy (`.worktrees/skill-*`) is in the way of a link: a file, a directory, a link elsewhere or a dangling link. Exit codes, as for `tools/worktree.sh`: `0` success, `1` failure, `2` usage, `3` refused for safety.
 
 **The skill's own repository** uses itself the same way, which is how scm-skill develops itself with its own process: from its main worktree, `tools/skill-copy.sh use . origin/main`. The copy and the links are then in the same repository; the links point to a copy, never to the working tree, so tools that follow links (`find -L`, `grep -R`, `diff -r`) do not loop.
 
