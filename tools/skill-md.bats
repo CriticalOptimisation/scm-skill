@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Structural tests for SKILL.md content (#13, #16).
+# Structural tests for SKILL.md content (#13, #16, #20, #21).
 
 bats_require_minimum_version 1.5.0
 
@@ -134,6 +134,61 @@ frontmatter() {
   for s in 'AWAITING-APPROVAL <url>' 'REGRESS-TO-TASK-4 <url>' 'BLOCKED <url>' 'DONE'; do
     grep -qF "\`$s\`" "$SKILL_MD"
   done
+}
+
+# --- Skill name and resolved base directory (#21) ---------------------------
+# The skill's name comes from name:, not from the link. Claude Code announces
+# the base directory as the link path, which may move to another copy while a
+# session runs: <skill> is resolved once, and the resolved path is handed on.
+
+# Prints the "## " section of a file whose heading starts with $1, up to the
+# next "## " heading.
+section() {
+  awk -v h="## $1" '
+    index($0, h) == 1 { on = 1; print; next }
+    on && /^## / { exit }
+    on { print }
+  ' "$2"
+}
+
+@test "SKILL.md frontmatter names the skill scm-skill" {
+  run --separate-stderr frontmatter "$SKILL_MD" name
+  [[ -z "$stderr" ]]
+  [[ "$output" == scm-skill ]]
+}
+
+@test "SKILL.md Paths: resolve <skill> once with readlink -f, use only the resolved path" {
+  run --separate-stderr section Paths "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'readlink -f'* ]]
+  [[ "$output" == *'only the resolved path'* ]]
+}
+
+@test "SKILL.md: an order passes the resolved <skill>" {
+  run --separate-stderr grep -m1 '^\*\*An order\*\* gives' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *"the skill's resolved directory \`<skill>\`"* ]]
+}
+
+@test "scm-engineer: an order gives the resolved <skill>, never resolved again" {
+  run --separate-stderr grep -m1 '^An order gives:' "$BATS_TEST_DIRNAME/../agents/scm-engineer.md"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *"the skill's resolved directory \`<skill>\`"* ]]
+  [[ "$output" == *'never resolve the link again'* ]]
+}
+
+@test "README.md has a Developing the skill section that names skill-repo-development" {
+  run --separate-stderr section 'Developing the skill' "$BATS_TEST_DIRNAME/../README.md"
+  [[ -z "$stderr" ]]
+  [[ "$output" == '## Developing the skill'* ]]
+  [[ "$output" == *'https://github.com/CriticalOptimisation/skill-repo-development'* ]]
+}
+
+@test "README.md Using it in a project links .claude/skills/scm-skill" {
+  run --separate-stderr section 'Using it in a project' "$BATS_TEST_DIRNAME/../README.md"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'ln -s /path/to/scm-skill .claude/skills/scm-skill'* ]]
+  [[ "$output" == *'echo "/.claude/skills/scm-skill" >> .git/info/exclude'* ]]
 }
 
 # --- Change History -------------------------------------------------------
