@@ -291,3 +291,4 @@ agents_sh_mentions() {
 # | #18    | Prepare for Review order: PR, history, auto-merge, review (#16)|
 # | #22    | By line on every step; agents exist; Conductor section (#20)  |
 # | #25    | name:, resolved <skill>; install by skill-copy.sh; no agents.sh (#23)|
+# | #28    | update at session start: SKILL.md and README.md text (#26)    |

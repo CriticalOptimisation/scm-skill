@@ -974,3 +974,4 @@ skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #25    | contract, refusals and edge cases; agents.bats converted (#23) |
+# | #28    | update <copy>: core, edge cases; frozen marker; placeholders removed (#26)|

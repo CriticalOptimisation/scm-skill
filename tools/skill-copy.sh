@@ -416,3 +416,4 @@ dispatch "$@"
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #25    | port of skill-repo-development 74caa22: one copy per project (#23)|
+# | #28    | update <copy> to origin/main; use records --frozen (#26)      |
