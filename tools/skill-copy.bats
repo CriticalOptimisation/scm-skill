@@ -925,3 +925,4 @@ fake_session() {
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
+# | #25    | contract, refusals and edge cases; agents.bats converted (#23) |
