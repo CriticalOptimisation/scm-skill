@@ -6,6 +6,7 @@ This segment covers documentation, testing, implementation, and code review.
 
 ## Documentation Updates
 - **Objective**: Keep docs, comments, and AI skills aligned with the code.
+- **By**: `scm-engineer`.
 - **Activities**:
   - Update README, Sphinx docs, skill files, or other relevant documentation.
   - Include usage notes, caveats, and cross-references as needed.
@@ -14,6 +15,7 @@ This segment covers documentation, testing, implementation, and code review.
 
 ## Tests Development
 - **Objective**: Drive the implementation with tests (where applicable).
+- **By**: `scm-engineer`.
 - **Activities**:
   - Modify or add only the configuration items explicitly approved in the assessment.
   - Extend the relevant test suite (`test/...`), keeping new tests close to the projected behavior being implemented (focus on core tests that illustrate new or corrected behaviors, not edge cases).
@@ -26,6 +28,7 @@ This segment covers documentation, testing, implementation, and code review.
 
 ## Functionality Implementation
 - **Objective**: Ensure the approved change works as intended.
+- **By**: `scm-engineer`.
 - **Activities**:
   - Apply the implementation changes following the approved design.
   - Match the existing coding style in the codebase. Minimize the size of code patches measured after discarding white space only changes (large blocks that are unchanged except for indentation, can increase the size of a patch, but do not make a large divergence in the logic itself).
@@ -37,6 +40,7 @@ This segment covers documentation, testing, implementation, and code review.
 
 ## Code Review Request
 - **Objective**: Surface the work for maintainers' review.
+- **By**: `scm-engineer` opens the PR and addresses review feedback; the conductor enables auto-merge, requests the review, checks the board, and forwards review comments verbatim.
 - **Activities**:
   - Open a PR with a descriptive title and body referencing the issue.
   - Open the PR when the first version is ready for review, not earlier. Its body carries `Closes #N` for the issue: this links the PR to the issue, so the board workflows move the **issue** to *In review* and GitHub closes it at merge. The PR gets no card.

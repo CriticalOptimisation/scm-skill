@@ -6,6 +6,7 @@ This segment covers the initial assessment and approval phase of the implementat
 
 ## Issue Assessment & Approval
 - **Objective**: Establish a shared understanding of scope, dependencies, and blockers before editing any git-tracked files.
+- **By**: `scm-engineer` writes and posts the assessment; the conductor assesses approval and moves the issue to *Ready*.
 - **Activities**:
   - Review the issue description, comments, and attachments.
   - Assess technical impact, dependencies, and required configuration changes.

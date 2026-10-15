@@ -6,6 +6,7 @@ This segment covers final integration and post-implementation validation.
 
 ## Final Integration
 - **Objective**: Let GitHub integrate the approved change after all protections pass.
+- **By**: `scm-engineer` rebases the branch if new commits on main must be integrated; the conductor does everything else: checks, merge watch, local resynchronization.
 - **Activities**:
   - Ensure CI/CD checks are green.
   - Confirm the PR satisfies branch protection requirements.
@@ -21,6 +22,7 @@ This segment covers final integration and post-implementation validation.
 
 ## Post-Implementation Validation
 - **Objective**: Confirm the change stabilizes in the repository.
+- **By**: the conductor.
 - **Activities**:
   - Monitor for regressions or failures triggered by the merge.
   - Confirm that change history entries are present and accurate in all files modified by the PR, and that `history.md` files are present in all skill directories touched by the PR.

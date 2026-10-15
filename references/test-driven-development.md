@@ -6,6 +6,7 @@ This task covers branch creation, documentation updates and preliminary tests de
 
 ## Branch and Worktree Creation
 - **Objective**: Create an isolated workspace for the approved plan, without touching the main worktree. The branch is needed to commit the preliminary tests and check that they fail before the implementation starts.
+- **By**: the conductor, before it orders `scm-engineer` to start Task 4.
 - **Activities**:
   - Choose the branch name `{type}/{number}-{short-description}`, where {type} is:
     - `feature` for new features
@@ -44,6 +45,7 @@ This task covers branch creation, documentation updates and preliminary tests de
 
 ## Documentation Updates
 - **Objective**: Keep docs, comments, and AI skills aligned with the code.
+- **By**: `scm-engineer`.
 - **Activities**:
   - Update README, Sphinx docs, skill files, or other relevant documentation.
   - Include usage notes, caveats, and cross-references as needed.
@@ -52,6 +54,7 @@ This task covers branch creation, documentation updates and preliminary tests de
 
 ## Preliminary Tests Definition
 - **Objective**: Define preliminary tests to illustrate the documented behavior.
+- **By**: `scm-engineer`, including the failure record and the compare link; the conductor assesses approval.
 - **Activities**:
   - Extend the relevant test suite (`test/...`), keeping new tests close to the projected behavior being implemented (focus on core tests that illustrate new or corrected behaviors, not edge cases).
   - Follow coding standards; use `xfail` tags for tests that are known to fail temporarily.

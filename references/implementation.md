@@ -6,6 +6,7 @@ This task covers source code implementation, edge-cases tests expansion, testing
 
 ## Source Code Implementation
 - **Objective**: Ensure the approved change works as intended.
+- **By**: `scm-engineer`.
 - **Activities**:
   - Apply the implementation changes following the approved design.
   - Match the existing coding style in the codebase. Minimize the size of code patches measured after discarding white space only changes (large blocks that are unchanged except for indentation, can increase the size of a patch, but do not make a large divergence in the logic itself).
@@ -17,6 +18,7 @@ This task covers source code implementation, edge-cases tests expansion, testing
 
 ## Edge-cases Tests Expansion
 - **Objective**: Expand tests to cover edge cases.
+- **By**: `scm-engineer`.
 - **Activities**:
   - Add tests for edge cases based on the implementation.
   - Apply the same test-writing standards as the preliminary tests (see `test-driven-development.md`): assert on every captured stderr stream (match the diagnostic, or assert empty on a clean path), keep replaced tests as commented `REVIEW PLACEHOLDER` blocks instead of silently deleting them, and remove the placeholders already present in any test file this PR edits.
@@ -25,12 +27,14 @@ This task covers source code implementation, edge-cases tests expansion, testing
 
 ## Testing
 - **Objective**: Validate the implementation.
+- **By**: `scm-engineer`.
 - **Activities**:
   - Run the full test suite.
 - **Validation**: All tests pass.
 
 ## Prepare for Review
 - **Objective**: Surface the work for maintainers' review.
+- **By**: `scm-engineer` runs the checklist, opens the PR, records it in the history files and addresses review feedback; the conductor then enables auto-merge, requests the review, checks the board, and forwards review comments verbatim.
 - **Activities**, in this order:
   - **New library or public API checklist** — when a PR introduces a new library or a new public API, verify before opening the PR that it ships with:
     1. reference documentation;
