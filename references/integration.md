@@ -6,9 +6,9 @@ This segment covers final integration and post-implementation validation.
 
 ## Final Integration
 - **Objective**: Let GitHub integrate the approved change after all protections pass.
-- **By**: `scm-engineer` syncs the branch with main when the conductor finds it behind; the conductor does everything else: checks, merge watch, local resynchronization, and the notices to the other issues in progress.
+- **By**: the conductor: checks, merge watch, local resynchronization, and the notices to the other issues in progress. When main moved, the step aborts and the issue returns to Task 5, where `scm-engineer` syncs the branch.
 - **Activities**:
-  - Check that the branch is not behind `main` (see *Sync with `main`* in `SKILL.md`). If it is, order *sync* to the engineer, the same one or a new one according to the cache temperature, and wait for its `DONE`. The sync of this branch is part of preparing its merge; the other branches are never touched.
+  - Check that the branch is not behind `main` (see *Sync with `main`* in `SKILL.md`). If it is, **abort Task 6 and return to Task 5**: order *sync* to the engineer (the same one or a new one, according to the cache temperature), wait for its `DONE`, request the review again, and start Task 6 over only after the maintainer approves again. Syncing is a Task 5 activity, concluded by a Task 5 review; the other branches are never touched.
   - Ensure CI/CD checks are green.
   - Confirm the PR satisfies branch protection requirements.
   - Allow GitHub to auto-merge once everything is ready (manual merging is not required): auto-merge was enabled when the PR was opened, and the approving review triggers it. GitHub will squash all the commits in one.

@@ -405,6 +405,19 @@ TOOLS_MD="$BATS_TEST_DIRNAME/../references/shell-tools.md"
   [[ "$output" == *'`gh`'* ]]
 }
 
+@test "a sync is a Task 5 activity: when main moves in Task 6, Task 6 aborts back to Task 5" {
+  run --separate-stderr section 'Conductor and Engineer' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'is a Task 5 activity, concluded by a Task 5 review'* ]]
+  [[ "$output" == *'**Task 6 aborts and the issue returns to Task 5.**'* ]]
+  [[ "$output" == *'the maintainer approves again'* ]]
+  INTEG_MD="$BATS_TEST_DIRNAME/../references/integration.md"
+  run --separate-stderr grep -m1 '^- \*\*By\*\*: ' "$INTEG_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == '- **By**: the conductor'* ]]
+  grep -qF '**abort Task 6 and return to Task 5**' "$INTEG_MD"
+}
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
@@ -414,3 +427,4 @@ TOOLS_MD="$BATS_TEST_DIRNAME/../references/shell-tools.md"
 # | #25    | name:, resolved <skill>; install by skill-copy.sh; no agents.sh (#23)|
 # | #28    | update at session start: SKILL.md and README.md text (#26)    |
 # | #30    | engineer lifetime, brief, posting, board.sh, no bootstrap (#27)|
+# | #30    | a sync is a Task 5 activity; Task 6 aborts when main moves (#27)|
