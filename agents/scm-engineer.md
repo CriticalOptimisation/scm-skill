@@ -48,4 +48,4 @@ End every turn with exactly one status line, and nothing else. The conductor doe
 - `AWAITING-APPROVAL <url>`: a deliverable is posted and needs the maintainer's approval; the URL is the comment or the PR.
 - `REGRESS-TO-TASK-4 <url>`: Task 5 found that the core tests are wrong; the URL is the comment that explains why.
 - `BLOCKED <url>`: you cannot go on without the maintainer; the URL is the comment that says why.
-- `DONE`: the ordered work is finished and needs no approval (for example, the Task 6 rebase is pushed).
+- `DONE`: the ordered work is finished and needs no approval (for example, the sync is pushed).
