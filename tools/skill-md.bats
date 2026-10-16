@@ -1,28 +1,11 @@
 #!/usr/bin/env bats
-# Structural tests for SKILL.md content (#13, #16, #20, #21, #23).
+# Structural tests for SKILL.md content (#13, #16, #20, #21, #23, #24).
 
 bats_require_minimum_version 1.5.0
 
 setup() {
   SKILL_MD="$BATS_TEST_DIRNAME/../SKILL.md"
 }
-
-# REVIEW PLACEHOLDER (#27): the board query left SKILL.md for tools/board.sh.
-# board query uses filteredCount for the REOPENED_EVENT filter -> board.bats: board.sh query uses filteredCount for the REOPENED_EVENT filter
-# board query does not use totalCount for the REOPENED_EVENT filter -> board.bats: board.sh query does not use totalCount for the REOPENED_EVENT filter
-# @test "board query uses filteredCount for the REOPENED_EVENT filter" {
-#   # totalCount ignores itemTypes (GitHub API quirk): every open PR appears
-#   # reopened. filteredCount counts only matching events.
-#   run --separate-stderr grep -cF 'filteredCount' "$SKILL_MD"
-#   [[ -z "$stderr" ]]
-#   [[ "$output" -ge 1 ]]
-# }
-#
-# @test "board query does not use totalCount for the REOPENED_EVENT filter" {
-#   run --separate-stderr grep -cF 'timelineItems(itemTypes:[REOPENED_EVENT]){totalCount}' "$SKILL_MD"
-#   [[ -z "$stderr" ]]
-#   [[ "$output" -eq 0 ]]
-# }
 
 # --- Prepare for Review order (#16) -----------------------------------------
 # The change history needs the PR number, so it is committed after the PR
@@ -418,6 +401,152 @@ TOOLS_MD="$BATS_TEST_DIRNAME/../references/shell-tools.md"
   grep -qF '**abort Task 6 and return to Task 5**' "$INTEG_MD"
 }
 
+# --- Change-history templates (#24) -----------------------------------------
+# templates.md is the index of the change-history templates; each language has
+# its own references/template-<language>.md, with a Covers: line and its block.
+# Installed add-ons may ship more templates, declared in their description.
+
+REFS="$BATS_TEST_DIRNAME/../references"
+TEMPLATES_MD="$REFS/templates.md"
+TEMPLATE_FILES="shell rst skill-history markdown go javascript yaml sql python config"
+INDEX='Change History Section Templates'
+
+@test "templates: each built-in template file exists and has a Covers: line" {
+  for t in $TEMPLATE_FILES; do
+    run --separate-stderr grep -c '^Covers: ' "$REFS/template-$t.md"
+    [[ -z "$stderr" ]]
+    [[ "$output" -ge 1 ]]
+  done
+}
+
+# Prints the fenced code blocks of a file, without their fences.
+fenced() {
+  awk '/^```/ { on = !on; next } on { print }' "$1"
+}
+
+@test "templates: each template file holds a block with its comment prefix" {
+  for p in 'shell:# --- Change History' 'yaml:# --- Change History' \
+           'python:# --- Change History' 'config:# --- Change History' \
+           'go:// --- Change History' 'javascript:// --- Change History' \
+           'sql:-- --- Change History' 'markdown:<!--' 'rst:..'; do
+    run --separate-stderr fenced "$REFS/template-${p%%:*}.md"
+    [[ -z "$stderr" ]]
+    [[ "$output" == *"${p#*:}"* ]]
+  done
+  run --separate-stderr fenced "$REFS/template-markdown.md"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'-->'* ]]
+}
+
+@test "templates: only the shell template has return 0" {
+  run --separate-stderr fenced "$REFS/template-shell.md"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'return 0'* ]]
+  for t in yaml python config go javascript sql; do
+    run --separate-stderr fenced "$REFS/template-$t.md"
+    [[ -z "$stderr" ]]
+    [[ "$output" != *'return 0'* ]]
+  done
+}
+
+# Prints the template files named in the rows of the index table, sorted.
+indexed_templates() {
+  section "$INDEX" "$TEMPLATES_MD" | grep -o '^| `template-[a-z-]*\.md`' |
+    grep -o 'template-[a-z-]*\.md' | sort -u
+}
+
+@test "templates: the index table and the template files match" {
+  run --separate-stderr indexed_templates
+  [[ -z "$stderr" ]]
+  expected=$(cd "$REFS" && ls template-*.md 2>/dev/null | sort)
+  [[ -n "$output" ]]
+  [[ "$output" == "$expected" ]]
+}
+
+@test "templates: the index states exemptions, declarations and the fallback rule" {
+  run --separate-stderr section "$INDEX" "$TEMPLATES_MD"
+  [[ -z "$stderr" ]]
+  for s in 'Generated files' 'CLAUDE.md' '.github/' 'history.md' \
+           'Change-history templates for file types:' \
+           'Change-history templates for project:' \
+           'template-fallback.md' 'Covers:' 'no comment syntax' \
+           'skill-copy.sh use' 'installed' 'available' 'conductor' 'BLOCKED'; do
+    [[ "$output" == *"$s"* ]]
+  done
+}
+
+@test "templates: the index orders the six sources of a template" {
+  local f=$TEMPLATES_MD prev=0 n
+  for s in '1. **Installed project-specific add-on**' \
+           '2. **Other installed add-on**' \
+           '3. **Built-in template**' \
+           '4. **Project-specific fallback rule**' \
+           '5. **Available add-on**' \
+           '6. **Built-in fallback rule**'; do
+    run --separate-stderr line_of "$s" "$f"
+    [[ -z "$stderr" ]]
+    n=$output
+    [[ -n "$n" ]]
+    (( n > prev ))
+    prev=$n
+  done
+}
+
+@test "implementation.md: the change-history step skips exempt files and reads the index" {
+  run --separate-stderr grep -m1 'update the change history section' "$REFS/implementation.md"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'exempt'* ]]
+  [[ "$output" == *'templates.md'* ]]
+  [[ "$output" == *'template-'* ]]
+}
+
+@test "templates: the index holds no change-history block; each template has one source" {
+  run --separate-stderr section "$INDEX" "$TEMPLATES_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" != *'```'* ]]
+  [[ "$output" != *'--- Change History ---'* ]]
+}
+
+@test "templates: each Covers: line names at least one file type" {
+  for f in "$REFS"/template-*.md; do
+    run --separate-stderr grep -m1 '^Covers: ' "$f"
+    [[ -z "$stderr" ]]
+    [[ "$output" =~ ^Covers:\ .*[^[:space:]] ]]
+    [[ "$output" == *'`'* ]]
+  done
+}
+
+@test "SKILL.md names templates.md as the index of the template-*.md files" {
+  run --separate-stderr grep -m1 '^- `templates.md` — ' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'template-*.md'* ]]
+}
+
+@test "integration.md: the history check skips exempt files" {
+  run --separate-stderr grep -m1 'change history entries are present' "$REFS/integration.md"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'except exempt files'* ]]
+}
+
+@test "templates: no reference to a session bootstrap issue or an Add-ons: line" {
+  run --separate-stderr grep -il -e 'bootstrap' -e 'Add-ons:' "$TEMPLATES_MD" "$REFS"/template-*.md
+  [[ -z "$stderr" ]]
+  [[ -z "$output" ]]
+  run --separate-stderr section 'Add-ons' "$BATS_TEST_DIRNAME/../README.md"
+  [[ -z "$stderr" ]]
+  [[ "$output" != *'ootstrap'* ]]
+}
+
+@test "README.md Add-ons: an add-on may ship change-history templates" {
+  run --separate-stderr section 'Add-ons' "$BATS_TEST_DIRNAME/../README.md"
+  [[ -z "$stderr" ]]
+  for s in 'Change-history templates for file types:' \
+           'Change-history templates for project:' \
+           'template-' 'Covers:' 'precedence'; do
+    [[ "$output" == *"$s"* ]]
+  done
+}
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
@@ -428,3 +557,4 @@ TOOLS_MD="$BATS_TEST_DIRNAME/../references/shell-tools.md"
 # | #28    | update at session start: SKILL.md and README.md text (#26)    |
 # | #30    | engineer lifetime, brief, posting, board.sh, no bootstrap (#27)|
 # | #30    | a sync is a Task 5 activity; Task 6 aborts when main moves (#27)|
+# | #31    | change-history templates per language; add-on templates (#24)|
