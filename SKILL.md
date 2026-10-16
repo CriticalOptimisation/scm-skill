@@ -53,7 +53,7 @@ The update is for the whole project: the sessions started later get the new copy
 | warm | under 1 hour | the same engineer, with its full context |
 | cold | 1 hour or more | a new engineer `#n+1`, primed with a brief; then the old one is stopped |
 
-The thresholds are the two lifetimes of the prompt cache, 5 minutes and 1 hour: after its lifetime, a resumed engineer writes its whole context to the cache again, which costs more than priming a new engineer with a brief. **The engineer's requests use the 5-minute lifetime**: the transcripts of #27 show cache writes of the 5-minute kind only for the engineer, and of the 1-hour kind only for the conductor. So, for the engineer, **warm counts as cold**: from 5 minutes on, the order goes to a new engineer. If the engineer's requests come to use the 1-hour lifetime, the warm row applies as written.
+The thresholds are the two lifetimes of the prompt cache, 5 minutes and 1 hour: after its lifetime, a resumed engineer writes its whole context to the cache again. The engineer's requests use the 5-minute lifetime (the transcripts of #27 show cache writes of the 5-minute kind only for the engineer, and of the 1-hour kind only for the conductor), so a warm engineer pays that rewrite once. **Warm counts as hot**: an engineer is kept for up to 1 hour after its last report, because one rewrite of its context costs less than priming a new engineer, which must read the process and the threads again. Only a cold engineer is replaced.
 
 **Stopping an engineer**: the conductor stops its session (`TaskStop`) when it can, and in every case tells the maintainer in one line: `archive session "issue #N engineer #n"`. An engineer is stopped when a new one replaces it, and when its issue is done.
 

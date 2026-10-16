@@ -309,7 +309,7 @@ TOOLS_MD="$BATS_TEST_DIRNAME/../references/shell-tools.md"
   run --separate-stderr section 'Conductor and Engineer' "$SKILL_MD"
   [[ -z "$stderr" ]]
   [[ "$output" == *'**Cache temperature**'* ]]
-  for s in '| hot | under 5 minutes |' '| warm | under 1 hour |' '| cold | 1 hour or more |' 'warm counts as cold'; do
+  for s in '| hot | under 5 minutes |' '| warm | under 1 hour |' '| cold | 1 hour or more |' 'Warm counts as hot'; do
     [[ "$output" == *"$s"* ]]
   done
   [[ "$output" != *'new engineer per PR-review iteration'* ]]
