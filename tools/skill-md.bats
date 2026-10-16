@@ -557,3 +557,4 @@ indexed_templates() {
 # | #28    | update at session start: SKILL.md and README.md text (#26)    |
 # | #30    | engineer lifetime, brief, posting, board.sh, no bootstrap (#27)|
 # | #30    | a sync is a Task 5 activity; Task 6 aborts when main moves (#27)|
+# | #31    | change-history templates per language; add-on templates (#24)|
