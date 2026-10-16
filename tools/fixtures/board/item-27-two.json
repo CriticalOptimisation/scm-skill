@@ -1,0 +1,4 @@
+{"data":{"repository":{"issue":{"id":"I_27","number":27,"projectItems":{"nodes":[
+  {"id":"PVTI_27a","project":{"id":"PVT_3","number":3,"title":"Kanban"},"fieldValueByName":{"name":"In progress"}},
+  {"id":"PVTI_27b","project":{"id":"PVT_5","number":5,"title":"Other"},"fieldValueByName":{"name":"Backlog"}}
+]}}}}}

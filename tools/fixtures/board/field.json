@@ -1,0 +1,4 @@
+{"data":{"node":{"field":{"id":"PVTSSF_1","name":"Status","options":[
+  {"id":"o_backlog","name":"Backlog"},{"id":"o_ready","name":"Ready"},
+  {"id":"o_progress","name":"In progress"},{"id":"o_review","name":"In review"},
+  {"id":"o_done","name":"Done"}]}}}}

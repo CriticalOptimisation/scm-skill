@@ -8,7 +8,7 @@ This segment covers the initial assessment and approval phase of the implementat
 - **Objective**: Establish a shared understanding of scope, dependencies, and blockers before editing any git-tracked files.
 - **By**: `scm-engineer` writes and posts the assessment; the conductor assesses approval and moves the issue to *Ready*.
 - **Activities**:
-  - Review the issue description, comments, and attachments.
+  - Review the issue description, comments, and attachments. The issue is a problem statement: a solution described in its body or its first comment is a hint, to weigh like any other option, not a decision.
   - Assess technical impact, dependencies, and required configuration changes.
   - Identify **high-level show stoppers** that would prevent the task from progressing immediately (e.g., missing remote test infrastructure, unavailable SSH servers, or blocker secrets).
   - **Post the assessment result as a comment on the GitHub issue.** This is mandatory and is the deliverable of Task 2: the scope, technical impact, dependency/show-stopper analysis, and proposed mitigation must all appear in a single issue comment so the reviewer can respond in-thread. Do not carry the assessment only in the working conversation — it must be recorded on the issue.

@@ -6,8 +6,9 @@ This segment covers final integration and post-implementation validation.
 
 ## Final Integration
 - **Objective**: Let GitHub integrate the approved change after all protections pass.
-- **By**: `scm-engineer` rebases the branch if new commits on main must be integrated; the conductor does everything else: checks, merge watch, local resynchronization.
+- **By**: the conductor: checks, merge watch, local resynchronization, and the notices to the other issues in progress. When main moved, the step aborts and the issue returns to Task 5, where `scm-engineer` syncs the branch.
 - **Activities**:
+  - Check that the branch is not behind `main` (see *Sync with `main`* in `SKILL.md`). If it is, **abort Task 6 and return to Task 5**: order *sync* to the engineer (the same one or a new one, according to the cache temperature), wait for its `DONE`, request the review again, and start Task 6 over only after the maintainer approves again. Syncing is a Task 5 activity, concluded by a Task 5 review; the other branches are never touched.
   - Ensure CI/CD checks are green.
   - Confirm the PR satisfies branch protection requirements.
   - Allow GitHub to auto-merge once everything is ready (manual merging is not required): auto-merge was enabled when the PR was opened, and the approving review triggers it. GitHub will squash all the commits in one.
@@ -17,6 +18,8 @@ This segment covers final integration and post-implementation validation.
     2. `<skill>/tools/worktree.sh reclaim` (`<skill>` is this skill's own directory, see *Paths* in `SKILL.md`) — brings the main worktree back to `main` if the maintainer had left it on the merged branch, and does nothing otherwise;
     3. `<skill>/tools/worktree.sh drop {number}-{short-description}` — removes the branch worktree; VS Code drops it from *Source Control Repositories* by itself. The `.git` tab that `new` opened then shows a deleted file: close it, or let the optional `workbench.editor.closeOnFileDelete` setting close it (see the README);
     4. delete the local branch (`git branch -D`), since a squash merge leaves it unmerged in git's eyes.
+  - Notify the conductors in charge of the other issues *In progress* or *In review* (`board.sh list`): a one-line comment on each, `main moved: #N merged as <sha>; sync this branch before its review or merge.`, and one line to the maintainer naming them (see *After the merge* in `SKILL.md`).
+  - Stop the engineers of the issue (see *Stopping an engineer* in `SKILL.md`).
   - If the PR addressed multiple issues, manually close any additional referenced issues after confirming tests pass (GitHub closes at most one issue per PR).
 - **Validation**: The change merges automatically after meeting the protected branch checks, and local repo is synchronized.
 

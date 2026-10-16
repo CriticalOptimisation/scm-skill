@@ -1,0 +1,21 @@
+{"data":{"repository":{"issueOrPullRequest":{
+  "__typename":"PullRequest","id":"PR_5","number":5,
+  "author":{"login":"engineer"},"createdAt":"2026-10-16T09:00:00Z",
+  "body":"Closes #27",
+  "comments":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[
+    {"id":"IC_9","databaseId":1009,"author":{"login":"lepeuvedic"},"createdAt":"2026-10-16T12:00:00Z",
+     "body":"Looks good overall."}
+  ]},
+  "reviews":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[
+    {"id":"PRR_1","author":{"login":"lepeuvedic"},"submittedAt":"2026-10-16T10:00:00Z",
+     "state":"CHANGES_REQUESTED","body":"See D4."}
+  ]},
+  "reviewThreads":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[
+    {"id":"PRRT_1","isResolved":true,"isOutdated":false,"path":"tools/thread.sh","line":12,"originalLine":12,
+     "comments":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[
+       {"id":"PRRC_1","databaseId":2001,"author":{"login":"lepeuvedic"},"createdAt":"2026-10-16T10:01:00Z",
+        "body":"Why not jq here?"},
+       {"id":"PRRC_2","databaseId":2002,"author":{"login":"engineer"},"createdAt":"2026-10-16T11:00:00Z",
+        "body":"Done in abc123."}
+     ]}}
+  ]}}}}}

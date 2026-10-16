@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# gh stub for thread.bats and board.bats (#27).
+#
+# Logs each call on one line of $GH_STUB_LOG (arguments joined by spaces,
+# newlines folded), and saves the stdin of a call that reads it (an argument
+# ending in =@-, or --body-file -) to $GH_STUB_LOG.stdin.
+# Answers from $GH_STUB_RULES: one rule per line, "<glob><TAB><answer>",
+# first match wins. <answer> is a fixture file under $GH_STUB_DIR, printed on
+# stdout, or "!<code> <message>": <message> on stderr, exit <code>.
+# A call no rule matches exits 99.
+set -u
+call="$*"
+call=${call//$'\n'/ }
+printf '%s\n' "$call" >> "${GH_STUB_LOG:?}"
+prev=
+for a in "$@"; do
+  if [[ $a == *=@- || $a == - && $prev == --body-file ]]; then
+    cat > "$GH_STUB_LOG.stdin"
+  fi
+  prev=$a
+done
+while IFS=$'\t' read -r pat ans; do
+  [[ -z $pat || $pat == '#'* ]] && continue
+  # shellcheck disable=SC2053
+  if [[ $call == $pat ]]; then
+    if [[ $ans == '!'* ]]; then
+      code=${ans%% *}; code=${code#!}
+      printf '%s\n' "${ans#* }" >&2
+      exit "$code"
+    fi
+    cat "${GH_STUB_DIR:?}/$ans"
+    exit 0
+  fi
+done < "${GH_STUB_RULES:?}"
+printf 'gh stub: no rule for: %s\n' "$call" >&2
+exit 99
+
+# --- Change History -------------------------------------------------------
+# | PR     | Summary                                                       |
+# |--------|---------------------------------------------------------------|
+# | #30    | new: gh stub answering from fixtures by rule (#27)            |

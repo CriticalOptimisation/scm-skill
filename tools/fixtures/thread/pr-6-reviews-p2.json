@@ -1,0 +1,5 @@
+{"data":{"repository":{"issueOrPullRequest":{"__typename":"PullRequest",
+  "reviews":{"pageInfo":{"hasNextPage":false,"endCursor":"R2"},"nodes":[
+    {"id":"PRR_2","author":{"login":"lepeuvedic"},"submittedAt":"2026-10-16T13:00:00Z","createdAt":"2026-10-16T13:00:00Z",
+     "state":"APPROVED","body":"Approved"}
+  ]}}}}}

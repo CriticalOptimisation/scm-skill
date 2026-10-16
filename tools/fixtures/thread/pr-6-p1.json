@@ -1,0 +1,16 @@
+{"data":{"repository":{"issueOrPullRequest":{
+  "__typename":"PullRequest","id":"PR_6","number":6,
+  "author":null,"createdAt":"2026-10-16T09:00:00Z",
+  "body":"Line one\r\nLine two\r\n",
+  "comments":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]},
+  "reviews":{"pageInfo":{"hasNextPage":true,"endCursor":"R1"},"nodes":[
+    {"id":"PRR_1","author":{"login":"lepeuvedic"},"submittedAt":"2026-10-16T10:00:00Z","createdAt":"2026-10-16T09:59:00Z",
+     "state":"COMMENTED","body":""}
+  ]},
+  "reviewThreads":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[
+    {"id":"PRRT_2","isResolved":false,"isOutdated":true,"path":"SKILL.md","line":null,"originalLine":40,
+     "comments":{"pageInfo":{"hasNextPage":true,"endCursor":"T1"},"nodes":[
+       {"id":"PRRC_5","databaseId":2005,"author":{"login":"lepeuvedic"},"createdAt":"2026-10-16T10:30:00Z",
+        "body":"Say why.\n\nIn one line."}
+     ]}}
+  ]}}}}}

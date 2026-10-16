@@ -1,0 +1,8 @@
+{"data":{"repository":{"issueOrPullRequest":{
+  "__typename":"Issue","id":"I_27","number":27,
+  "author":{"login":"lepeuvedic"},"createdAt":"2026-10-14T10:00:00Z",
+  "body":"## Feature Request\n\nFollows #20 and its pilot #21.\n",
+  "comments":{"pageInfo":{"hasNextPage":false,"endCursor":"C2"},"nodes":[
+    {"id":"IC_3","databaseId":1003,"author":{"login":"lepeuvedic"},"createdAt":"2026-10-16T07:00:00Z",
+     "body":"### Plan review\n\nD1 accepted. D2 agreed."}
+  ]}}}}}
