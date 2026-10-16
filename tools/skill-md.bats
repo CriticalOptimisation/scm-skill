@@ -7,23 +7,6 @@ setup() {
   SKILL_MD="$BATS_TEST_DIRNAME/../SKILL.md"
 }
 
-# REVIEW PLACEHOLDER (#27): the board query left SKILL.md for tools/board.sh.
-# board query uses filteredCount for the REOPENED_EVENT filter -> board.bats: board.sh query uses filteredCount for the REOPENED_EVENT filter
-# board query does not use totalCount for the REOPENED_EVENT filter -> board.bats: board.sh query does not use totalCount for the REOPENED_EVENT filter
-# @test "board query uses filteredCount for the REOPENED_EVENT filter" {
-#   # totalCount ignores itemTypes (GitHub API quirk): every open PR appears
-#   # reopened. filteredCount counts only matching events.
-#   run --separate-stderr grep -cF 'filteredCount' "$SKILL_MD"
-#   [[ -z "$stderr" ]]
-#   [[ "$output" -ge 1 ]]
-# }
-#
-# @test "board query does not use totalCount for the REOPENED_EVENT filter" {
-#   run --separate-stderr grep -cF 'timelineItems(itemTypes:[REOPENED_EVENT]){totalCount}' "$SKILL_MD"
-#   [[ -z "$stderr" ]]
-#   [[ "$output" -eq 0 ]]
-# }
-
 # --- Prepare for Review order (#16) -----------------------------------------
 # The change history needs the PR number, so it is committed after the PR
 # opens, and before auto-merge and the review request.
@@ -515,6 +498,34 @@ indexed_templates() {
   [[ "$output" == *'exempt'* ]]
   [[ "$output" == *'templates.md'* ]]
   [[ "$output" == *'template-'* ]]
+}
+
+@test "templates: the index holds no change-history block; each template has one source" {
+  run --separate-stderr section "$INDEX" "$TEMPLATES_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" != *'```'* ]]
+  [[ "$output" != *'--- Change History ---'* ]]
+}
+
+@test "templates: each Covers: line names at least one file type" {
+  for f in "$REFS"/template-*.md; do
+    run --separate-stderr grep -m1 '^Covers: ' "$f"
+    [[ -z "$stderr" ]]
+    [[ "$output" =~ ^Covers:\ .*[^[:space:]] ]]
+    [[ "$output" == *'`'* ]]
+  done
+}
+
+@test "SKILL.md names templates.md as the index of the template-*.md files" {
+  run --separate-stderr grep -m1 '^- `templates.md` — ' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'template-*.md'* ]]
+}
+
+@test "integration.md: the history check skips exempt files" {
+  run --separate-stderr grep -m1 'change history entries are present' "$REFS/integration.md"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'except exempt files'* ]]
 }
 
 @test "templates: no reference to a session bootstrap issue or an Add-ons: line" {
