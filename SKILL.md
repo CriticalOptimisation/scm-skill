@@ -151,6 +151,7 @@ Companion reference files under `<skill>/references/` contain full details:
 - `implementation-execution.md` — Task 5 & 6 execution details
 - `integration.md` — Task 6: Final Integration and Validation
 - `shell-tools.md` — `tools/thread.sh` and `tools/board.sh`: threads and board
+- `templates.md` — issue and PR templates, and the index of the change-history templates `template-*.md`, one file per language
 
 Every implementation status update should cite the relevant assessment in the issue comments so reviewers understand that the change followed this documented process.
 

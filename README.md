@@ -97,6 +97,12 @@ An add-on is a skill that works on top of scm-skill, such as [skill-repo-develop
 - its `SKILL.md` has a strict instruction to refuse to run without scm-skill;
 - it may ship its own `tools/skill-copy.sh`, which delegates to scm-skill's and, when scm-skill cannot be found, fails with the installation instructions above.
 
+An add-on may ship **change-history templates**, for file types that scm-skill does not cover, or to replace its built-in ones. The rules are in `references/templates.md`, *Change History Section Templates*.
+- **Template files**: each is a file `references/template-<language>.md`, with a `Covers:` line that lists its file types.
+- **Declaration**: the add-on declares its templates in the `description` of its `SKILL.md`, with `Change-history templates for file types: <list>` or `Change-history templates for project: <owner>/<repo>`.
+- **Precedence**: an installed add-on takes precedence over the built-in templates. A project-specific add-on takes precedence over the other add-ons.
+- **Available add-ons**: an add-on that is not installed is used only when no built-in template covers the file type. It is used only if the project's *Session bootstrap* issue lists it on its `Add-ons:` line; it is then installed.
+
 ## Requirements
 
 Linux, bash, git, `flock` (util-linux), GNU coreutils (`mv -T`), procps (`pgrep`, `ps`), and, for `tools/thread.sh` and `tools/board.sh`, `gh` (with the `project` scope) and `jq`. The tests need bats ≥ 1.5: `bats tools/*.bats`.
