@@ -1,6 +1,6 @@
 # scm-skill
 
-The software configuration management process used by CalCool Studios' Claude Code sessions, packaged as a Claude Code skill. `SKILL.md` at the root is the entry point; `references/` holds the task-by-task workflow; `tools/worktree.sh` implements the one-worktree-per-branch convention the skill relies on. The skill refers to its own files through its own directory, so it works wherever a project links it; `tools/skill-copy.sh` installs it.
+The software configuration management process used by CalCool Studios' Claude Code sessions, packaged as a Claude Code skill. `SKILL.md` at the root is the entry point; `references/` holds the task-by-task workflow; `tools/worktree.sh` implements the one-worktree-per-branch convention the skill relies on; `tools/thread.sh` and `tools/board.sh` read and write the issue and PR threads and the project board with minimal output (`references/shell-tools.md`). The skill refers to its own files through its own directory, so it works wherever a project links it; `tools/skill-copy.sh` installs it.
 
 ## Using it in a project
 
@@ -70,10 +70,12 @@ The skill and agent links live in the main worktree only: start sessions there.
 The process splits the work of an issue between two roles (see *Conductor and Engineer* in `SKILL.md`):
 
 - **the conductor**: the session you talk to. Start it on Sonnet: `claude --model sonnet`.
-- **the engineer**: the `scm-engineer` agent, on Opus, started by the conductor and installed by `use` with the skill. It runs in the background, so it cannot answer permission prompts: allow it the `git` and `gh` commands it needs, for example in `.claude/settings.local.json`:
+- **the engineer**: the `scm-engineer` agent, on Opus, started by the conductor and installed by `use` with the skill. It runs in the background, so it cannot answer permission prompts: allow it the `git` and `gh` commands it needs, and the two scripts it posts with, under any copy of the skill, for example in `.claude/settings.local.json`:
 
   ```json
-  { "permissions": { "allow": ["Bash(git:*)", "Bash(gh:*)", "Bash(bats:*)"] } }
+  { "permissions": { "allow": ["Bash(git:*)", "Bash(gh:*)", "Bash(bats:*)",
+    "Bash(/path/to/scm-skill/.worktrees/skill-*/tools/thread.sh:*)",
+    "Bash(/path/to/scm-skill/.worktrees/skill-*/tools/board.sh:*)"] } }
   ```
 
 ## The skill-copy hook
@@ -97,7 +99,7 @@ An add-on is a skill that works on top of scm-skill, such as [skill-repo-develop
 
 ## Requirements
 
-Linux, bash, git, `flock` (util-linux), GNU coreutils (`mv -T`) and procps (`pgrep`, `ps`). The tests need bats ≥ 1.5: `bats tools/*.bats`.
+Linux, bash, git, `flock` (util-linux), GNU coreutils (`mv -T`), procps (`pgrep`, `ps`), and, for `tools/thread.sh` and `tools/board.sh`, `gh` (with the `project` scope) and `jq`. The tests need bats ≥ 1.5: `bats tools/*.bats`.
 
 ## Changing the process
 

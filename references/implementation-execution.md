@@ -40,13 +40,13 @@ This segment covers documentation, testing, implementation, and code review.
 
 ## Code Review Request
 - **Objective**: Surface the work for maintainers' review.
-- **By**: `scm-engineer` opens the PR and addresses review feedback; the conductor enables auto-merge, requests the review, checks the board, and forwards review comments verbatim.
+- **By**: `scm-engineer` opens the PR, syncs the branch with main when ordered, and addresses review feedback; the conductor enables auto-merge, checks that the branch is not behind main, requests the review, and forwards the id of each review comment, to the same engineer or to a new one according to the cache temperature (see *Conductor and Engineer* in SKILL.md).
 - **Activities**:
   - Open a PR with a descriptive title and body referencing the issue.
   - Open the PR when the first version is ready for review, not earlier. Its body carries `Closes #N` for the issue: this links the PR to the issue, so the board workflows move the **issue** to *In review* and GitHub closes it at merge. The PR gets no card.
   - Enable auto-merge right away (`gh pr merge --auto --squash`): the maintainer's approving review then triggers the merge.
-  - Verify on the board that the issue is *In review* and that no PR card was added (see *Kanban Board* in `SKILL.md`).
+  - Check that the branch is not behind `main` (see *Sync with `main`* in `SKILL.md`); if it is, the engineer syncs it first.
   - Assign the **maintainers team** as reviewers (@CriticalOptimisation/maintainers).
   - Link the original issue and summarize the changes.
-  - Address review feedback iteratively.
+  - Address review feedback iteratively: read each comment by its id (`thread.sh get`), answer inline threads with `thread.sh reply`, and other points with `thread.sh post`.
 - **Validation**: The pull request shows an approved review from a maintainer in GitHub (check the 'Reviews' tab; conversation resolution alone is insufficient).

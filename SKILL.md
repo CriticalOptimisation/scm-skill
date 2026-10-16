@@ -13,12 +13,12 @@ This skill keeps the surface area small: it helps you decide whether you are man
 
 ## Task Selection
 
-1. **Meta-task path** – Use this skill (and the `github-issues` skill) for issue creation, triage, labeling, or other housekeeping that does _not_ touch git-managed configuration items. Keep the local clone synchronized with `origin/main`, maintain a read-only copy of `main` for reference, and avoid committing until an Issue Assessment is approved. A new issue must reach the board in *Backlog* (see *Kanban Board*). Issues are never reopened: write a new issue that references the old one.
+1. **Meta-task path** – Use this skill (and the `github-issues` skill) for issue creation, triage, labeling, or other housekeeping that does _not_ touch git-managed configuration items. Keep the local clone synchronized with `origin/main`, maintain a read-only copy of `main` for reference, and avoid committing until an Issue Assessment is approved. A new issue must reach the board in *Backlog* (see *Kanban Board*). **A new issue is a problem statement**: a solution described in its body or its first comment is a hint for the assessment, not a decision. Issues are never reopened: write a new issue that references the old one.
 2. **Shared Issue Understanding** – Trigger this task when a GitHub issue is identified for implementation. Precondition: Issue exists and is assigned. Perform the Issue Assessment & Approval step to identify blockers. **Post the assessment result as a comment on the issue** — this is the mandatory deliverable of this task — then obtain explicit reviewer approval before touching any git-tracked file. When the assessment is approved, move the issue to *Ready*. Do not proceed to other tasks without approval. *Engineer*: writes and posts the assessment. *Conductor*: starts the engineer, assesses approval, moves the card.
 3. **Implementation Planning** – Trigger this task on an issue after approval in Task 2. Precondition: Task 2 completed with approval. Perform Detailed Planning and record the plan in the issue. No branch is created and no git-tracked file changes in this task. Do not proceed to other tasks without approval of the detailed plan. *Engineer*: writes and posts the plan. *Conductor*: assesses approval.
 4. **Test Driven Development** – Trigger this task after detailed plan validation in Task 3. Precondition: Task 3 completed with validated plan. Start by creating the branch and its worktree and moving the issue to *In progress*. Perform Documentation, Preliminary Tests Definition steps, commit the preliminary tests on their own and record that they fail against the unchanged code, then confirm that the documentation builds properly and is in strict adherence to the detailed plan. Confirm that the preliminary tests are a straightforward illustration of the documented behavior and correct if needed, post the branch compare link in the issue, then **stop**. Do not proceed without approval on the documentation and the preliminary tests. *Conductor*: creates the branch and worktree, moves the card, assesses approval. *Engineer*: everything else.
-5. **Implementation** – Trigger this task after documentation and preliminary tests in Task 4 have been approved. Perform Source code Implementation, Edge-cases Tests Expansion, Testing, and Prepare for Review steps **in that order**. Finally, when the first version is ready for review, create the PR (`Closes #N`), push the change-history commit with its number, then enable auto-merge and request review, and update the source code until the PR automated tests pass or until you discover an inconsistency in the tests. Ask permission to return to Task 4 if needed. Follow the formal review process of the PR and make updates as directed by the maintainers. *Engineer*: code, tests, PR, change history, review replies. *Conductor*: auto-merge, review request, board check, forwarding review comments.
-6. **Integration** – Trigger this task after review approval in Task 5. Precondition: Task 5 completed with maintainer review approval. Perform Final Integration and Validation until GitHub automatically merges the branch into `main` and deletes the remote branch. Evaluate new commits to main that must be integrated via rebase, final testing using the whole test suite, checking the tests status on the GitHub PR, local repository resynchronization after the merge (squash and merge). Verify that the issue reached *Done* and is closed. All edits must be minimal and justified at this stage. *Engineer*: the rebase, if `main` moved. *Conductor*: everything else.
+5. **Implementation** – Trigger this task after documentation and preliminary tests in Task 4 have been approved. Perform Source code Implementation, Edge-cases Tests Expansion, Testing, and Prepare for Review steps **in that order**. Finally, when the first version is ready for review, create the PR (`Closes #N`), push the change-history commit with its number, then enable auto-merge and request review, and update the source code until the PR automated tests pass or until you discover an inconsistency in the tests. Ask permission to return to Task 4 if needed. Follow the formal review process of the PR and make updates as directed by the maintainers. *Engineer*: code, tests, PR, change history, the sync with `main` before the review request, review replies. *Conductor*: auto-merge, the check that the branch is not behind `main`, review request, forwarding the ids of review comments.
+6. **Integration** – Trigger this task after review approval in Task 5. Precondition: Task 5 completed with maintainer review approval. Perform Final Integration and Validation until GitHub automatically merges the branch into `main` and deletes the remote branch. Evaluate new commits to main that must be integrated via rebase, final testing using the whole test suite, checking the tests status on the GitHub PR, local repository resynchronization after the merge (squash and merge). Verify that the issue reached *Done* and is closed. All edits must be minimal and justified at this stage. *Engineer*: the sync with `main`, when the conductor finds the branch behind it. *Conductor*: everything else, including the notices to the other issues in progress after the merge.
 
 ## Meta-task Guidance
 
@@ -33,8 +33,8 @@ Projects install this skill as a **fixed copy** of one commit, reached through a
 
 Two roles share the work of an issue, each on the model that suits it. Every step of the reference files says who does it on its `By` line.
 
-- **The conductor** is the main session, started on Sonnet (`claude --model sonnet`). It runs the process: the checks at the start of each task, board moves, worktree creation and removal, syncing `main`, auto-merge, review requests. It reads the maintainer's comments and assesses approval. It does not read what the engineer writes. A conductor that finds itself on another model says so once to the maintainer and carries on.
-- **The engineer** is the `scm-engineer` agent, on Opus (`<skill>/agents/scm-engineer.md`, installed by `<skill>/tools/skill-copy.sh use` with the skill, one link per agent). It does the work that needs judgement: assessment, plan, documentation, tests, code, PR, review replies, rebase. It posts on GitHub and commits in the worktree itself.
+- **The conductor** is the main session, started on Sonnet (`claude --model sonnet`). It runs the process: the checks at the start of each task, the board moves no workflow makes, worktree creation and removal, syncing the main worktree with `main`, auto-merge, review requests. It starts and stops the engineers. It reads the maintainer's comments and assesses approval. It does not read what the engineer writes, except once, when it writes the subject index of a brief (see *The brief*). A conductor that finds itself on another model says so once to the maintainer and carries on.
+- **The engineer** is the `scm-engineer` agent, on Opus (`<skill>/agents/scm-engineer.md`, installed by `<skill>/tools/skill-copy.sh use` with the skill, one link per agent). It does the work that needs judgement: assessment, plan, documentation, tests, code, PR, review replies, rebase. It posts on GitHub itself, with `<skill>/tools/thread.sh` (see *Posting*), and commits in the worktree itself.
 
 **Updating the skill at session start.** Once per conductor session, right after the skill loads and `<skill>` is resolved, and **before** the checks at the start of the first task and before the engineer starts, the conductor runs, from the project root, `<skill>/tools/skill-copy.sh update <skill>`. It brings the project's copy up to `origin/main` of the skill's repository (see `README.md`, *Updating*), and prints one line:
 - `updated <old> <new> <copy>`: the links moved. The conductor resolves `<skill>` again (`readlink -f <base directory>`, see *Paths*), re-reads `SKILL.md` from the new `<skill>`, and tells the maintainer in one line: `scm-skill updated <old> → <new>`. No restart is needed: so far the conductor has read only `SKILL.md`, so reading it again brings its context up to date. The engineer started afterwards gets the new `<skill>` in its order. Claude Code loads agent definitions when a session starts, so that engineer keeps the old `scm-engineer` definition until the next session. This matters little: the definition only states its role, and the engineer reads the process from the new `<skill>`.
@@ -43,11 +43,37 @@ Two roles share the work of an issue, each on the model that suits it. Every ste
 
 The update is for the whole project: the sessions started later get the new copy, and a session already running keeps the copy it resolved.
 
-**Starting the engineer.** The conductor starts one engineer per issue per session, in the background (`Agent` with `subagent_type: scm-engineer`), and gives every later order to the same engineer with `SendMessage`, so the engineer keeps its context from task to task. A new conductor session starts a new engineer, which catches up from the issue thread: the issue thread is the durable memory of the work.
+**Starting the engineer.** The conductor starts an engineer in the background (`Agent` with `subagent_type: scm-engineer`), with the title `issue #N engineer #n` as its `description`. One conductor may drive several engineers, for one issue or for several, and the maintainer must tell their sessions apart, in the mobile app too. `n` counts the engineers of issue `#N` across conductor sessions: every engineer ends each comment it posts with the line `— issue #N engineer #n`, `thread.sh index` lists that signature in its tags, and a conductor takes the highest `n` it finds plus one. An engineer started at Task 2 reads the issue in full; an engineer started later gets a brief (see *The brief*). Later orders go to the same engineer with `SendMessage`, as long as its cache is not cold.
 
-**An order** gives the issue number, the task, the worktree path (from Task 4), the skill's resolved directory `<skill>` (see *Paths*), the `GH_CONFIG_DIR` to use, and the maintainer's comment, forwarded verbatim, when there is one. After a deliverable, the conductor orders either:
-- *iterate*, with the comment, when the comment does not approve. A dubious approval is not an approval: the conductor orders *iterate*. Real approvals are explicit.
+**Cache temperature** decides whether an engineer is kept. The conductor records the time of each report of the engineer (`date +%s`). When an order is due (a gate answered, an *iterate*, a *sync*, any later order), it compares the time since that report with the lifetimes of the prompt cache:
+
+| Temperature | Time since the last report | The order goes to |
+|---|---|---|
+| hot | under 5 minutes | the same engineer, with its full context |
+| warm | under 1 hour | the same engineer, with its full context |
+| cold | 1 hour or more | a new engineer `#n+1`, primed with a brief; then the old one is stopped |
+
+The thresholds are the two lifetimes of the prompt cache, 5 minutes and 1 hour: after its lifetime, a resumed engineer writes its whole context to the cache again, which costs more than priming a new engineer with a brief. **The engineer's requests use the 5-minute lifetime**: the transcripts of #27 show cache writes of the 5-minute kind only for the engineer, and of the 1-hour kind only for the conductor. So, for the engineer, **warm counts as cold**: from 5 minutes on, the order goes to a new engineer. If the engineer's requests come to use the 1-hour lifetime, the warm row applies as written.
+
+**Stopping an engineer**: the conductor stops its session (`TaskStop`) when it can, and in every case tells the maintainer in one line: `archive session "issue #N engineer #n"`. An engineer is stopped when a new one replaces it, and when its issue is done.
+
+**The brief** primes a new engineer. The conductor gives:
+- the **table of contents** of the issue and, once it exists, of the PR: the output of `<skill>/tools/thread.sh index <N>` (see `<skill>/references/shell-tools.md`), with the exact id of every message;
+- the **subject index**: each key point discussed in the threads, with the ids of the messages that deal with it. The conductor writes it, and it is the only time it reads the threads: once, in full (`thread.sh read`), when it is about to prime its first new engineer for the issue. It keeps the index in its context and, each time another engineer is about to start, extends it with the messages that arrived since (`thread.sh read <N> <k>-`), without re-reading the rest. A new conductor session writes it again from scratch;
+- the id of the maintainer's comment the order answers, and the conductor's short summary of the points it raises;
+- the instruction to **err on the safe side**: in doubt, read the full message or the slice, rather than save tokens.
+
+The engineer reads any message in full, by its id, with `thread.sh get`.
+
+**An order** gives the issue number, the task, the engineer's name (`issue #N engineer #n`), the worktree path (from Task 4), the skill's resolved directory `<skill>` (see *Paths*), the `GH_CONFIG_DIR` to use, and, when there is one, the id of the maintainer's comment, which the engineer reads itself with `thread.sh get`: the comment is never copied into the order. After a deliverable, the conductor orders either:
+- *iterate*, with the comment's id, when the comment does not approve. A dubious approval is not an approval: the conductor orders *iterate*. Real approvals are explicit.
 - *move on to Task N*, when the comment approves, after moving the card.
+
+**Posting.** The engineer posts what it writes for the maintainer itself: `thread.sh post <N>` for a comment, `thread.sh reply <id>` in an inline review thread, `gh pr create --body-file -` for the PR, each with the text in a here-doc, so that no file is written (see `<skill>/references/shell-tools.md`). Each prints only a URL: the text never passes through the conductor, which would pay for it a second time as input.
+
+**Sync with `main`.** The engineer owns every rebase of its branch. The conductor checks whether the branch is behind `main`, while the engineer is idle, with one command that prints a number: `git -C <worktree> fetch -q origin && git -C <worktree> rev-list --count HEAD..origin/main` (`0`: the branch is based on the tip of `main`). It checks in Task 5, when the engineer reports the PR ready and before it requests the review, and in Task 6, after the approval, before the merge. When the branch is behind, it orders *sync*: the engineer rebases, runs the whole suite, pushes (`--force-with-lease`) and reports `DONE`, or `BLOCKED <url>` on a conflict it cannot resolve alone.
+
+**After the merge**, the conductor never touches the other branches. It notifies the conductors in charge of the other issues *In progress* or *In review* (`board.sh list`): a one-line comment on each, `main moved: #N merged as <sha>; sync this branch before its review or merge.`, and one line to the maintainer naming them. A conductor assesses approval from the maintainer's comments only, so a notice is never taken for one.
 
 **The engineer's report** is one status line, which the conductor relays to the maintainer and acts on:
 - `AWAITING-APPROVAL <url>`: a deliverable awaits the maintainer.
@@ -73,37 +99,32 @@ Several sessions may work on the same clone at the same time. A branch switch in
 
 ## Kanban Board
 
-The maintainer steers from the project board. Workflows of the board make most moves; the conductor makes only the moves no workflow can make, and verifies the others. **Only issues have cards**: a PR shows on its issue's card through the `Closes #N` link. The one exception is a reopened PR (see *Events outside the task sequence*).
+The maintainer steers from the project board. Workflows of the board make most moves; the conductor makes only the moves no workflow can make, with `<skill>/tools/board.sh` (see `<skill>/references/shell-tools.md`). The engineer never moves a card. The conductor reads the moves of the workflows only where its next action depends on them: the checks at the start of every task, and the end of Task 6. **Only issues have cards**: a PR shows on its issue's card through the `Closes #N` link. The one exception is a reopened PR (see *Events outside the task sequence*).
 
-- **Finding the board**: the board of an issue is in the issue's own `projectItems`, since the board's auto-add workflow puts every new issue there. Cross-check it with the *Kanban* line of the repository's *Session bootstrap* issue. If there is no board, more than one, or the two disagree: **stop and ask the maintainer**.
+- **Finding the board**: the board of an issue is in the issue's own `projectItems`, since the board's auto-add workflow puts every new issue there. If there is no board or more than one: **stop and ask the maintainer**; `board.sh` refuses in that case.
 - **Moves along the tasks** (the end of a task is the start of the next one):
 
   | Task | At start | During | At end |
   |---|---|---|---|
-  | 1. Meta-task: issue creation | — | — | *Workflows*: issue added → **Backlog**. *Conductor*: verifies the card. |
-  | 2. Shared Issue Understanding | — | — | *Conductor*: assessment approved, issue → **Ready**. |
+  | 1. Meta-task: issue creation | — | — | *Workflows*: issue added → **Backlog**. |
+  | 2. Shared Issue Understanding | — | — | *Conductor*: assessment approved, `board.sh move <N> Backlog Ready`. |
   | 3. Implementation Planning | — | — | — |
-  | 4. Test Driven Development | *Conductor*: creates the branch and worktree, issue → **In progress**. | — | — |
-  | 5. Implementation | — | First version ready for review. *Engineer*: opens the PR with `Closes #N`, pushes the change-history commit with its number. *Conductor*: runs `gh pr merge --auto --squash`, then requests review. *Workflows*: PR linked to the issue → issue **In review**. *Conductor*: verifies the issue is *In review* and that no PR card was added. | *Maintainer*: approves. *GitHub*: auto-merges. |
+  | 4. Test Driven Development | *Conductor*: creates the branch and worktree, `board.sh move <N> Ready "In progress"`. | — | — |
+  | 5. Implementation | — | First version ready for review. *Engineer*: opens the PR with `Closes #N`, pushes the change-history commit with its number. *Conductor*: runs `gh pr merge --auto --squash`, checks that the branch is not behind `main` (see *Sync with `main`*), then requests review. *Workflows*: PR linked to the issue → issue **In review**. | *Maintainer*: approves. *GitHub*: auto-merges. |
   | 6. Integration | *Workflows*: PR merged and issue closed → issue **Done**. *Conductor*: verifies the card and that the issue is closed. | — | — |
 
 - **Events outside the task sequence**:
-  - *Conductor*: **a reopened PR** — a PR is reopened when its issue has not changed but the implementation needs rework. The conductor that reopens it adds it to the board (`gh project item-add`) and sets it to **In review** (`gh project item-edit`); no workflow is relied on. It is the only kind of PR card allowed. At merge it goes to **Done**: if no workflow moved it, the conductor moves it in Task 6.
+  - *Conductor*: **a reopened PR** — a PR is reopened when its issue has not changed but the implementation needs rework. The conductor that reopens it gives it a card in **In review** with `board.sh add-pr <PR>`; no workflow is relied on. It is the only kind of PR card allowed. At merge it goes to **Done**: if no workflow moved it, the conductor moves it in Task 6 (`board.sh move`).
   - *Workflows*: old **Done** items are archived.
   - An issue is never reopened.
-- **Checks at the start of every task**: an issue is *In review* only while it has an open linked PR; an issue with an open linked PR is *In review*; a PR card exists only for a reopened PR, *In review* while open, then *Done*; an **open issue in *Done*** means the maintainer stopped the work — stop, ask for the reason, record it on the issue, and close it (`completed` or `not planned`) once confirmed. Meta-tasks run the same checks on every open issue and PR of the repository. If a workflow did not fire, report it rather than move the card by hand.
-- **Commands** (IDs are looked up by name each time, never hard-coded):
+- **Checks at the start of every task** (`board.sh check` prints the violations, nothing when all is well): an issue is *In review* only while it has an open linked PR; an issue with an open linked PR is *In review*; a PR card exists only for a reopened PR, *In review* while open, then *Done*; an **open issue in *Done*** means the maintainer stopped the work — stop, ask for the reason, record it on the issue, and close it (`completed` or `not planned`) once confirmed. Meta-tasks run the same checks on every open issue and PR of the repository. If a workflow did not fire, report it rather than move the card by hand.
+- **Commands** (`<skill>/tools/board.sh`; IDs are looked up by name each time, never hard-coded; contract in `<skill>/references/shell-tools.md`):
   ```sh
-  # Every open issue with its open linked PRs and its card; every open PR with its reopen count and its card (expected: none, unless reopened)
-  gh api graphql -F o=OWNER -F r=REPO -f query='query($o:String!,$r:String!){repository(owner:$o,name:$r){
-    issues(states:OPEN,first:100){nodes{number closedByPullRequestsReferences(first:5,includeClosedPrs:false){nodes{number}} projectItems(first:5){nodes{id project{id number} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}
-    pullRequests(states:OPEN,first:100){nodes{number timelineItems(first:1,itemTypes:[REOPENED_EVENT]){filteredCount} projectItems(first:5){nodes{id project{id number} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}'
-  # Status field and option IDs of board P
-  gh project field-list P --owner OWNER --format json --jq '.fields[]|select(.name=="Status")|.id as $f|.options[]|"\($f) \(.id) \(.name)"'
-  # Add a reopened PR to board P (prints the new item ID)
-  gh project item-add P --owner OWNER --url PR_URL --format json --jq .id
-  # Move a card
-  gh project item-edit --id ITEM_ID --project-id PROJECT_ID --field-id FIELD_ID --single-select-option-id OPTION_ID
+  board.sh status <N>              # the column of issue #N, or none
+  board.sh move <N> <from> <to>    # refuses if the card is not in <from>
+  board.sh check                   # the checks at the start of every task
+  board.sh list <column>           # the open issues in a column
+  board.sh add-pr <PR>             # card for a reopened PR, in In review
   ```
 
 ## Issue Management Guidance
@@ -127,6 +148,7 @@ Companion reference files under `<skill>/references/` contain full details:
 - `implementation-workflow.md` — overview of the six tasks and their steps
 - `implementation-execution.md` — Task 5 & 6 execution details
 - `integration.md` — Task 6: Final Integration and Validation
+- `shell-tools.md` — `tools/thread.sh` and `tools/board.sh`: threads and board
 
 Every implementation status update should cite the relevant assessment in the issue comments so reviewers understand that the change followed this documented process.
 
