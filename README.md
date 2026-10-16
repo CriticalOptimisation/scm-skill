@@ -101,7 +101,7 @@ An add-on may ship **change-history templates**, for file types that scm-skill d
 - **Template files**: each is a file `references/template-<language>.md`, with a `Covers:` line that lists its file types.
 - **Declaration**: the add-on declares its templates in the `description` of its `SKILL.md`, with `Change-history templates for file types: <list>` or `Change-history templates for project: <owner>/<repo>`.
 - **Precedence**: an installed add-on takes precedence over the built-in templates. A project-specific add-on takes precedence over the other add-ons.
-- **Available add-ons**: an add-on that is not installed is used only when no built-in template covers the file type. It is used only if the project's *Session bootstrap* issue lists it on its `Add-ons:` line; it is then installed.
+- **Available add-ons**: an add-on listed by Claude Code but not installed in the project is used only when no built-in template covers the file type. The conductor finds it from the frontmatter in its list of skills, and installs it with `skill-copy.sh use`.
 
 ## Requirements
 

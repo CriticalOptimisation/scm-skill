@@ -142,15 +142,18 @@ An add-on is a skill installed next to scm-skill (see *Add-ons* in `README.md`).
 - the placement notes;
 - the block.
 
-An add-on declares its templates in the `description` of its `SKILL.md`, which Claude Code shows in the list of installed skills. It uses one or both of these phrases:
+An add-on declares its templates in the `description` of its `SKILL.md`: the frontmatter that Claude Code shows, with the skill's name, in its list of skills. It uses one or both of these phrases:
 
 - `Change-history templates for file types: <list>`: the add-on covers these file types in every project.
 - `Change-history templates for project: <owner>/<repo>`: the add-on is project-specific. It applies only to PRs in that repository, and covers the file types on the `Covers:` lines of its template files. Its generic fallback rule, if it has one, is `references/template-fallback.md`, with `Covers: *`.
 
 To use an installed add-on's template, load the add-on with the Skill tool, then read its template file.
 
-**Available add-ons** are listed on the `Add-ons:` line of the project's *Session bootstrap* issue, as `<owner>/<repo>`. scm-skill itself keeps no list of add-ons.
+**Installed or available.** An add-on is either installed or available.
+- An add-on is **installed** when the project uses it: `skill-copy.sh use` linked it into the project's skills directory (`.claude/skills/<name>`).
+- An add-on is **available** when Claude Code lists it but the project has not installed it, for example a skill of the user or of a plugin. scm-skill itself keeps no list of add-ons.
 
-- **Is it a candidate?** Read the add-on's `SKILL.md` on its `main` branch (`gh api repos/<owner>/<repo>/contents/SKILL.md`). It is a candidate when it declares the file type, and is not a project-specific add-on that gives only a fallback rule.
-- **Installing it**: `skill-copy.sh use <repo> origin/main` installs it, from the main worktree. That is the conductor's ground, so the engineer stops with `BLOCKED` and names the add-on and the command.
+How an available add-on is used (source 5):
+- **Finding candidates**: the conductor has the list of skills in its context. It picks the skills whose frontmatter declares the file type and passes them, as candidates, in its order to the engineer. A project-specific add-on that gives only a fallback rule is never a candidate.
+- **Installing it**: installation is the conductor's job, since `skill-copy.sh use <skill repo> origin/main` runs in the main worktree. When the engineer needs an available add-on, it stops with `BLOCKED`, naming the add-on and the command, and the conductor installs it.
 - **After installation**: the engineer reads the template from the new copy. Sessions started later load the add-on as a skill.

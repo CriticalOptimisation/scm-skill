@@ -487,7 +487,7 @@ indexed_templates() {
            'Change-history templates for file types:' \
            'Change-history templates for project:' \
            'template-fallback.md' 'Covers:' 'no comment syntax' \
-           'skill-copy.sh use' 'Add-ons:'; do
+           'skill-copy.sh use' 'installed' 'available' 'conductor' 'BLOCKED'; do
     [[ "$output" == *"$s"* ]]
   done
 }
@@ -515,6 +515,15 @@ indexed_templates() {
   [[ "$output" == *'exempt'* ]]
   [[ "$output" == *'templates.md'* ]]
   [[ "$output" == *'template-'* ]]
+}
+
+@test "templates: no reference to a session bootstrap issue or an Add-ons: line" {
+  run --separate-stderr grep -il -e 'bootstrap' -e 'Add-ons:' "$TEMPLATES_MD" "$REFS"/template-*.md
+  [[ -z "$stderr" ]]
+  [[ -z "$output" ]]
+  run --separate-stderr section 'Add-ons' "$BATS_TEST_DIRNAME/../README.md"
+  [[ -z "$stderr" ]]
+  [[ "$output" != *'ootstrap'* ]]
 }
 
 @test "README.md Add-ons: an add-on may ship change-history templates" {
