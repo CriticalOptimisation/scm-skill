@@ -200,3 +200,72 @@ PR #22 was reopened; its card is In progress, not In review' ]]
   [[ -z "$output" ]]
   [[ "$stderr" == *usage* ]]
 }
+
+# --- edge cases ----------------------------------------------------------------
+
+@test "check and list read every page of the open issues" {
+  rules '*after=I1*|issues-p2.json' '*pullRequests*|repo-p1.json'
+  run --separate-stderr "$BOARD" check
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 1 ]]
+  [[ "$output" == '#11 is open in Done: ask the maintainer why' ]]
+  run --separate-stderr "$BOARD" list Done
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == 11 ]]
+}
+
+@test "list: a column with no issue prints nothing" {
+  rules '*pullRequests*|repo-clean.json'
+  run --separate-stderr "$BOARD" list Ready
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 0 ]]
+  [[ -z "$output" ]]
+}
+
+@test "move: an unknown <from> is refused too" {
+  move_rules
+  run --separate-stderr "$BOARD" move 27 Doing 'In review'
+  [[ "$status" -eq 1 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'board.sh: unknown column: Doing (valid: Backlog, Ready, In progress, In review, Done)' ]]
+  ! grep -q updateProjectV2ItemFieldValue "$GH_STUB_LOG"
+}
+
+@test "move: an issue on several boards is refused before any lookup of the field" {
+  rules '*ProjectV2SingleSelectField*|field.json' '*projectItems*|item-27-two.json'
+  run --separate-stderr "$BOARD" move 27 'In progress' 'In review'
+  [[ "$status" -eq 1 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'board.sh: #27 is on 2 boards (#3, #5): ask the maintainer' ]]
+  ! grep -q ProjectV2SingleSelectField "$GH_STUB_LOG"
+}
+
+@test "add-pr: a PR that closes no issue with a card is refused" {
+  rules '*closingIssuesReferences*|pr-30-noissue.json'
+  run --separate-stderr "$BOARD" add-pr 30
+  [[ "$status" -eq 1 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'board.sh: PR #30 closes no issue with a card' ]]
+  ! grep -q addProjectV2ItemById "$GH_STUB_LOG"
+}
+
+@test "a failed gh call is one line on stderr" {
+  rules '*projectItems*|!1 HTTP 401: Bad credentials'
+  run --separate-stderr "$BOARD" status 27
+  [[ "$status" -eq 1 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'board.sh: gh: HTTP 401: Bad credentials' ]]
+}
+
+@test "usage errors: wrong arguments exit 2 without calling gh" {
+  rules
+  for args in "status" "status x" "move 27 Ready" "check now" "list" "add-pr x"; do
+    # shellcheck disable=SC2086
+    run --separate-stderr "$BOARD" $args
+    [[ "$status" -eq 2 ]]
+    [[ -z "$output" ]]
+    [[ "$stderr" == *usage* ]]
+  done
+  [[ ! -s "$GH_STUB_LOG" ]]
+}

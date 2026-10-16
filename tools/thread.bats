@@ -252,3 +252,132 @@ SCM_BODY
   [[ -z "$output" ]]
   [[ "$stderr" == *usage* ]]
 }
+
+# --- edge cases ----------------------------------------------------------------
+
+pr6_rules() {
+  rules '*after=R1*|pr-6-reviews-p2.json' '*after=T1*|pr-6-thread-p2.json' '*issueOrPullRequest*|pr-6-p1.json'
+}
+
+@test "index: every page of the reviews and of an inline thread; outdated, no line, ghost author" {
+  pr6_rules
+  run --separate-stderr "$THREAD" index 6 -o "$OUT"
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == '1 PR_6 2026-10-16 ghost body 18 -
+2 PRR_1 2026-10-16 lepeuvedic review:COMMENTED 0 -
+3 PRRC_5 2026-10-16 lepeuvedic inline 22 SKILL.md:40 outdated
+    Say why.
+
+    In one line.
+4 PRRC_6 2026-10-16 engineer reply 5 SKILL.md:40 outdated
+    Done.
+5 PRR_2 2026-10-16 lepeuvedic review:APPROVED 8 -' ]]
+}
+
+@test "read: CRLF line ends are normalised" {
+  pr6_rules
+  run --separate-stderr "$THREAD" read 6 1 -o "$OUT"
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == '1 PR_6 2026-10-16 ghost body 18 -
+Line one
+Line two' ]]
+}
+
+@test "read: a position past the end is an error; a malformed range a usage error" {
+  issue_rules
+  run --separate-stderr "$THREAD" read 27 5 -o "$OUT"
+  [[ "$status" -eq 1 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'thread.sh: no message 5 (4 in #27)' ]]
+  for r in 0 3-2 a 1-2-3 -0; do
+    run --separate-stderr "$THREAD" read 27 "$r" -o "$OUT"
+    [[ "$status" -eq 2 ]]
+    [[ -z "$output" ]]
+    [[ "$stderr" == *usage* ]]
+  done
+}
+
+@test "read -9 on a thread of 4 messages gives all of it" {
+  issue_rules
+  run --separate-stderr "$THREAD" read 27 -9 -o "$OUT"
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == '1 I_27 '* ]]
+  [[ "$(grep -c '^[0-9] ' <<< "$output")" -eq 4 ]]
+}
+
+@test "overflow: the 16 KiB limit applies with few lines" {
+  long=$(head -c 17000 /dev/zero | tr '\0' x)
+  mkdir "$BATS_TEST_TMPDIR/fix"
+  jq --arg b "$long" '.data.node.body = $b' "$GH_STUB_DIR/node-IC_1.json" > "$BATS_TEST_TMPDIR/fix/long.json"
+  export GH_STUB_DIR="$BATS_TEST_TMPDIR/fix"
+  rules '*IC_1*|long.json'
+  run --separate-stderr "$THREAD" get IC_1 -o "$OUT"
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 3 ]]
+  [[ "$output" == "overflow 2 lines $(wc -c < "$OUT") bytes -> $OUT" ]]
+  [[ "$(sed -n 2p "$OUT")" == "$long" ]]
+}
+
+@test "get: an unknown id is an error" {
+  rules '*IC_404*|node-null.json'
+  run --separate-stderr "$THREAD" get IC_404 -o "$OUT"
+  [[ "$status" -eq 1 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'thread.sh: no message IC_404' ]]
+}
+
+@test "a GraphQL answer with errors is a failure, even with exit 0" {
+  rules '*issueOrPullRequest*|graphql-errors.json'
+  run --separate-stderr "$THREAD" index 99 -o "$OUT"
+  [[ "$status" -eq 1 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'thread.sh: gh: Could not resolve to an issue or pull request with the number of 99.' ]]
+}
+
+@test "post: a failed call is one line on stderr" {
+  rules '*issues/27/comments*|!1 HTTP 403: Resource not accessible'
+  run --separate-stderr "$THREAD" post 27 <<< 'Hello'
+  [[ "$status" -eq 1 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'thread.sh: gh: HTTP 403: Resource not accessible' ]]
+}
+
+@test "post: a body of blanks only is empty" {
+  rules '*issues/27/comments*|posted.json'
+  run --separate-stderr "$THREAD" post 27 <<< $'  \n\t'
+  [[ "$status" -eq 2 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'thread.sh: empty body: nothing posted' ]]
+  [[ ! -s "$GH_STUB_LOG" ]]
+}
+
+@test "reply: an id that is not an inline review comment is refused" {
+  rules '*IC_1*|node-IC_1.json'
+  run --separate-stderr "$THREAD" reply IC_1 <<< 'Fixed.'
+  [[ "$status" -eq 1 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'thread.sh: IC_1 is not an inline review comment' ]]
+  ! grep -q replies "$GH_STUB_LOG"
+}
+
+@test "post and reply take no -o; post takes a number" {
+  rules
+  run --separate-stderr "$THREAD" post 27 -o "$OUT" <<< 'x'
+  [[ "$status" -eq 2 ]]
+  [[ "$stderr" == *usage* ]]
+  run --separate-stderr "$THREAD" post abc <<< 'x'
+  [[ "$status" -eq 2 ]]
+  [[ "$stderr" == *usage* ]]
+  [[ ! -s "$GH_STUB_LOG" ]]
+}
+
+@test "GH_REPO in the HOST/OWNER/NAME form" {
+  rules '*issues/27/comments*|posted.json'
+  GH_REPO=github.com/acme/widgets run --separate-stderr "$THREAD" post 27 <<< 'Hi'
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 0 ]]
+  grep -q 'repos/acme/widgets/issues/27/comments' "$GH_STUB_LOG"
+}

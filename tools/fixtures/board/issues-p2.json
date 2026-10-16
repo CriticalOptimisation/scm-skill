@@ -1,0 +1,3 @@
+{"data":{"repository":{
+  "issues":{"pageInfo":{"hasNextPage":false,"endCursor":"I2"},"nodes":[
+    {"number":11,"closedByPullRequestsReferences":{"nodes":[]},"projectItems":{"nodes":[{"id":"PVTI_11","project":{"id":"PVT_3","number":3},"fieldValueByName":{"name":"Done"}}]}}]}}}}
