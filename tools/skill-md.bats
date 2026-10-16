@@ -413,3 +413,4 @@ TOOLS_MD="$BATS_TEST_DIRNAME/../references/shell-tools.md"
 # | #22    | By line on every step; agents exist; Conductor section (#20)  |
 # | #25    | name:, resolved <skill>; install by skill-copy.sh; no agents.sh (#23)|
 # | #28    | update at session start: SKILL.md and README.md text (#26)    |
+# | #30    | engineer lifetime, brief, posting, board.sh, no bootstrap (#27)|

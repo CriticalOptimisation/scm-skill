@@ -381,3 +381,8 @@ Line two' ]]
   [[ "$status" -eq 0 ]]
   grep -q 'repos/acme/widgets/issues/27/comments' "$GH_STUB_LOG"
 }
+
+# --- Change History -------------------------------------------------------
+# | PR     | Summary                                                       |
+# |--------|---------------------------------------------------------------|
+# | #30    | new: thread.sh contract, gh stubbed (#27)                     |

@@ -34,3 +34,8 @@ while IFS=$'\t' read -r pat ans; do
 done < "${GH_STUB_RULES:?}"
 printf 'gh stub: no rule for: %s\n' "$call" >&2
 exit 99
+
+# --- Change History -------------------------------------------------------
+# | PR     | Summary                                                       |
+# |--------|---------------------------------------------------------------|
+# | #30    | new: gh stub answering from fixtures by rule (#27)            |
