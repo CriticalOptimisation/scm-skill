@@ -1,0 +1,188 @@
+{
+  "data": {
+    "repository": {
+      "issues": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        },
+        "nodes": [
+          {
+            "number": 10,
+            "closedByPullRequestsReferences": {
+              "nodes": [
+                {
+                  "number": 20
+                }
+              ]
+            },
+            "projectItems": {
+              "nodes": [
+                {
+                  "id": "PVTI_10",
+                  "project": {
+                    "id": "PVT_3",
+                    "number": 3
+                  },
+                  "fieldValueByName": {
+                    "name": "Ready"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 11,
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            },
+            "projectItems": {
+              "nodes": [
+                {
+                  "id": "PVTI_11",
+                  "project": {
+                    "id": "PVT_3",
+                    "number": 3
+                  },
+                  "fieldValueByName": {
+                    "name": "In review"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 12,
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            },
+            "projectItems": {
+              "nodes": [
+                {
+                  "id": "PVTI_12",
+                  "project": {
+                    "id": "PVT_3",
+                    "number": 3
+                  },
+                  "fieldValueByName": {
+                    "name": "Done"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 13,
+            "closedByPullRequestsReferences": {
+              "nodes": [
+                {
+                  "number": 23
+                }
+              ]
+            },
+            "projectItems": {
+              "nodes": [
+                {
+                  "id": "PVTI_13",
+                  "project": {
+                    "id": "PVT_3",
+                    "number": 3
+                  },
+                  "fieldValueByName": {
+                    "name": "In review"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 14,
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            },
+            "projectItems": {
+              "nodes": [
+                {
+                  "id": "PVTI_14",
+                  "project": {
+                    "id": "PVT_3",
+                    "number": 3
+                  },
+                  "fieldValueByName": {
+                    "name": "In progress"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "pullRequests": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        },
+        "nodes": [
+          {
+            "number": 20,
+            "timelineItems": {
+              "filteredCount": 0
+            },
+            "projectItems": {
+              "nodes": []
+            }
+          },
+          {
+            "number": 21,
+            "timelineItems": {
+              "filteredCount": 0
+            },
+            "projectItems": {
+              "nodes": [
+                {
+                  "id": "PVTI_p21",
+                  "project": {
+                    "id": "PVT_3",
+                    "number": 3
+                  },
+                  "fieldValueByName": {
+                    "name": "In review"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 22,
+            "timelineItems": {
+              "filteredCount": 1
+            },
+            "projectItems": {
+              "nodes": [
+                {
+                  "id": "PVTI_p22",
+                  "project": {
+                    "id": "PVT_3",
+                    "number": 3
+                  },
+                  "fieldValueByName": {
+                    "name": "In progress"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 23,
+            "timelineItems": {
+              "filteredCount": 0
+            },
+            "projectItems": {
+              "nodes": []
+            }
+          }
+        ]
+      }
+    }
+  }
+}

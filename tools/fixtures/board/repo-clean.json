@@ -1,0 +1,95 @@
+{
+  "data": {
+    "repository": {
+      "issues": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        },
+        "nodes": [
+          {
+            "number": 13,
+            "closedByPullRequestsReferences": {
+              "nodes": [
+                {
+                  "number": 23
+                }
+              ]
+            },
+            "projectItems": {
+              "nodes": [
+                {
+                  "id": "PVTI_13",
+                  "project": {
+                    "id": "PVT_3",
+                    "number": 3
+                  },
+                  "fieldValueByName": {
+                    "name": "In review"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 14,
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            },
+            "projectItems": {
+              "nodes": [
+                {
+                  "id": "PVTI_14",
+                  "project": {
+                    "id": "PVT_3",
+                    "number": 3
+                  },
+                  "fieldValueByName": {
+                    "name": "In progress"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "number": 15,
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            },
+            "projectItems": {
+              "nodes": [
+                {
+                  "id": "PVTI_15",
+                  "project": {
+                    "id": "PVT_3",
+                    "number": 3
+                  },
+                  "fieldValueByName": {
+                    "name": "Backlog"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "pullRequests": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        },
+        "nodes": [
+          {
+            "number": 23,
+            "timelineItems": {
+              "filteredCount": 0
+            },
+            "projectItems": {
+              "nodes": []
+            }
+          }
+        ]
+      }
+    }
+  }
+}

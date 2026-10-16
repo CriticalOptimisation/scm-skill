@@ -1,0 +1,4 @@
+{"data":{"node":{"__typename":"PullRequestReviewComment","id":"PRRC_1","databaseId":2001,
+  "author":{"login":"lepeuvedic"},"createdAt":"2026-10-16T10:01:00Z",
+  "path":"tools/thread.sh","line":12,"originalLine":12,"outdated":false,
+  "pullRequest":{"number":5},"body":"Why not jq here?"}}}

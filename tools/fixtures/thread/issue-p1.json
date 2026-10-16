@@ -1,0 +1,10 @@
+{"data":{"repository":{"issueOrPullRequest":{
+  "__typename":"Issue","id":"I_27","number":27,
+  "author":{"login":"lepeuvedic"},"createdAt":"2026-10-14T10:00:00Z",
+  "body":"## Feature Request\n\nFollows #20 and its pilot #21.\n",
+  "comments":{"pageInfo":{"hasNextPage":true,"endCursor":"C1"},"nodes":[
+    {"id":"IC_1","databaseId":1001,"author":{"login":"engineer"},"createdAt":"2026-10-15T10:00:00Z",
+     "body":"## Issue Assessment (Task 2)\n\n**A1. Point 3 is replaced.** Edit `SKILL.md` and `tools/thread.sh`, see #22.\n\n— issue #27 engineer #1"},
+    {"id":"IC_2","databaseId":1002,"author":{"login":"lepeuvedic"},"createdAt":"2026-10-15T11:00:00Z",
+     "body":"Approved"}
+  ]}}}}}

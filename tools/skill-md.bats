@@ -7,19 +7,22 @@ setup() {
   SKILL_MD="$BATS_TEST_DIRNAME/../SKILL.md"
 }
 
-@test "board query uses filteredCount for the REOPENED_EVENT filter" {
-  # totalCount ignores itemTypes (GitHub API quirk): every open PR appears
-  # reopened. filteredCount counts only matching events.
-  run --separate-stderr grep -cF 'filteredCount' "$SKILL_MD"
-  [[ -z "$stderr" ]]
-  [[ "$output" -ge 1 ]]
-}
-
-@test "board query does not use totalCount for the REOPENED_EVENT filter" {
-  run --separate-stderr grep -cF 'timelineItems(itemTypes:[REOPENED_EVENT]){totalCount}' "$SKILL_MD"
-  [[ -z "$stderr" ]]
-  [[ "$output" -eq 0 ]]
-}
+# REVIEW PLACEHOLDER (#27): the board query left SKILL.md for tools/board.sh.
+# board query uses filteredCount for the REOPENED_EVENT filter -> board.bats: board.sh query uses filteredCount for the REOPENED_EVENT filter
+# board query does not use totalCount for the REOPENED_EVENT filter -> board.bats: board.sh query does not use totalCount for the REOPENED_EVENT filter
+# @test "board query uses filteredCount for the REOPENED_EVENT filter" {
+#   # totalCount ignores itemTypes (GitHub API quirk): every open PR appears
+#   # reopened. filteredCount counts only matching events.
+#   run --separate-stderr grep -cF 'filteredCount' "$SKILL_MD"
+#   [[ -z "$stderr" ]]
+#   [[ "$output" -ge 1 ]]
+# }
+#
+# @test "board query does not use totalCount for the REOPENED_EVENT filter" {
+#   run --separate-stderr grep -cF 'timelineItems(itemTypes:[REOPENED_EVENT]){totalCount}' "$SKILL_MD"
+#   [[ -z "$stderr" ]]
+#   [[ "$output" -eq 0 ]]
+# }
 
 # --- Prepare for Review order (#16) -----------------------------------------
 # The change history needs the PR number, so it is committed after the PR
@@ -282,6 +285,124 @@ agents_sh_mentions() {
   for l in '`updated <old sha12> <new sha12> <new copy dir>`' '`current <sha12>`' '`kept <sha12> ahead`' '`kept <sha12> diverged`' '<copy>.frozen'; do
     [[ "$output" == *"$l"* ]]
   done
+}
+
+# --- Engineer lifetime, briefs and shell tools (#27) ------------------------
+# Engineers are titled and signed, kept or replaced by cache temperature, and
+# primed with a brief; they post through thread.sh with a here-doc; the
+# conductor passes comment ids, checks the sync with main, moves cards with
+# board.sh. No raw gh sequence the scripts cover is left in the process.
+
+AGENT_MD="$BATS_TEST_DIRNAME/../agents/scm-engineer.md"
+TOOLS_MD="$BATS_TEST_DIRNAME/../references/shell-tools.md"
+
+@test "SKILL.md Conductor and Engineer: titled engineers, signature, stop" {
+  run --separate-stderr section 'Conductor and Engineer' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'`issue #N engineer #n`'* ]]
+  [[ "$output" == *'`— issue #N engineer #n`'* ]]
+  [[ "$output" == *'`TaskStop`'* ]]
+  [[ "$output" == *'`archive session "issue #N engineer #n"`'* ]]
+}
+
+@test "SKILL.md Conductor and Engineer: hot, warm, cold decide whether the engineer is kept" {
+  run --separate-stderr section 'Conductor and Engineer' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'**Cache temperature**'* ]]
+  for s in '| hot | under 5 minutes |' '| warm | under 1 hour |' '| cold | 1 hour or more |' 'warm counts as cold'; do
+    [[ "$output" == *"$s"* ]]
+  done
+  [[ "$output" != *'new engineer per PR-review iteration'* ]]
+}
+
+@test "SKILL.md Conductor and Engineer: the brief, with the subject index and the safe side" {
+  run --separate-stderr section 'Conductor and Engineer' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'**The brief**'* ]]
+  [[ "$output" == *'**table of contents**'* ]]
+  [[ "$output" == *'thread.sh index <N>'* ]]
+  [[ "$output" == *'**subject index**'* ]]
+  [[ "$output" == *'**err on the safe side**'* ]]
+}
+
+@test "SKILL.md: an order passes the id of the maintainer's comment, never the comment" {
+  run --separate-stderr grep -m1 '^\*\*An order\*\* gives' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *"the id of the maintainer's comment"* ]]
+  [[ "$output" == *'thread.sh get'* ]]
+}
+
+@test "SKILL.md: the engineer posts through thread.sh with a here-doc; sync with main" {
+  run --separate-stderr section 'Conductor and Engineer' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'**Posting.**'* ]]
+  [[ "$output" == *'`thread.sh post <N>`'* ]]
+  [[ "$output" == *'here-doc'* ]]
+  [[ "$output" == *'**Sync with `main`.**'* ]]
+  [[ "$output" == *'rev-list --count HEAD..origin/main'* ]]
+  [[ "$output" == *'*sync*'* ]]
+}
+
+@test "scm-engineer: its name, the comment by id, the brief, sync, here-doc posting" {
+  run --separate-stderr grep -m1 '^An order gives:' "$AGENT_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'your name (`issue #N engineer #n`)'* ]]
+  [[ "$output" == *"the id of the maintainer's comment"* ]]
+  for s in 'thread.sh get' '**brief**' '**Err on the safe side**' '**Sync** means' "thread.sh post <N> <<'SCM_BODY'" 'thread.sh reply <id>' '`— issue #N engineer #n`'; do
+    grep -qF -- "$s" "$AGENT_MD"
+  done
+  # The engineer never moves a card.
+  run --separate-stderr section 'What you never do' "$AGENT_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'moving cards on the board'* ]]
+}
+
+@test "SKILL.md, agents and references: nothing forwarded verbatim, no bootstrap issue" {
+  run --separate-stderr grep -rniE 'verbatim|bootstrap issue|session bootstrap' "$SKILL_MD" "$BATS_TEST_DIRNAME/../agents" "$BATS_TEST_DIRNAME/../references"
+  [[ -z "$stderr" ]]
+  [[ -z "$output" ]]
+}
+
+@test "SKILL.md, agents and references: no raw gh sequence the scripts cover" {
+  run --separate-stderr grep -rnE 'gh api graphql|gh project item-|gh project field-list' "$SKILL_MD" "$BATS_TEST_DIRNAME/../agents" "$BATS_TEST_DIRNAME/../references"
+  [[ -z "$stderr" ]]
+  [[ -z "$output" ]]
+}
+
+@test "references/pr-threads.sh is absorbed into thread.sh and removed" {
+  [[ -f "$BATS_TEST_DIRNAME/thread.sh" ]]
+  [[ ! -e "$BATS_TEST_DIRNAME/../references/pr-threads.sh" ]]
+}
+
+@test "SKILL.md Kanban Board: board.sh commands, move with from and to" {
+  run --separate-stderr section 'Kanban Board' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  for s in 'board.sh status <N>' 'board.sh move <N> <from> <to>' 'board.sh check' 'board.sh list <column>' 'board.sh add-pr <PR>' 'The engineer never moves a card.'; do
+    [[ "$output" == *"$s"* ]]
+  done
+}
+
+@test "references/shell-tools.md documents every subcommand of thread.sh and board.sh" {
+  [[ -f "$TOOLS_MD" ]]
+  for s in '`index <N> -o <file>`' '`read <N> <range> -o <file>`' '`last <N> -o <file>`' '`get <id> -o <file>`' '`post <N>`' '`reply <id>`' \
+           '`status <N>`' '`move <N> <from> <to>`' '`check`' '`list <column>`' '`add-pr <PR>`' '**The overflow file.**' '**Nothing is truncated.**'; do
+    grep -qF -- "$s" "$TOOLS_MD"
+  done
+}
+
+@test "a new issue is a problem statement; a solution in it is a hint" {
+  run --separate-stderr grep -m1 '^1\. \*\*Meta-task path\*\*' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'**A new issue is a problem statement**'* ]]
+  [[ "$output" == *'is a hint'* ]]
+  grep -qF 'is a hint' "$BATS_TEST_DIRNAME/../references/shared-issue-understanding.md"
+}
+
+@test "README.md requirements name jq and gh" {
+  run --separate-stderr section 'Requirements' "$README_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'`jq`'* ]]
+  [[ "$output" == *'`gh`'* ]]
 }
 
 # --- Change History -------------------------------------------------------
