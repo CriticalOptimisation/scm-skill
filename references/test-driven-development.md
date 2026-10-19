@@ -54,7 +54,7 @@ This task covers branch creation, documentation updates and preliminary tests de
 
 ## Preliminary Tests Definition
 - **Objective**: Define preliminary tests to illustrate the documented behavior.
-- **By**: `scm-engineer`, including the failure record and the compare link; the conductor assesses approval.
+- **By**: `scm-engineer`, including the failure record, the handoff and the compare link; the conductor assesses approval.
 - **Activities**:
   - Extend the relevant test suite (`test/...`), keeping new tests close to the projected behavior being implemented (focus on core tests that illustrate new or corrected behaviors, not edge cases).
   - Follow coding standards; use `xfail` tags for tests that are known to fail temporarily.
@@ -64,5 +64,21 @@ This task covers branch creation, documentation updates and preliminary tests de
   - When necessary, re-use helper modules such as `bats-support` or `bats-assert` from the `devel` branch.
   - Commit the extended test suite **on its own**, before any implementation change, so that a later branch can start from it if the tests turn out to fire regardless of the implementation.
   - Run the new tests against the unchanged code and record the result in the issue: each new test must fail, and fail on the behaviour it illustrates.
+  - **On a return to Task 4** (see *Return to Task 4* in `implementation.md`), the engineer **never deletes a test** that exists on the branch, preliminary or edge-case. A test it changes or drops is commented out under a `REVIEW PLACEHOLDER` line (`old title -> new title`), as a new set of placeholders. It **wipes the placeholders** the questioned Task 4 added: they were reviewed with it, and the tests they led to, now questioned, become the new placeholders. The questioned patches stay readable in the handoff. The reworked deliverable goes on the issue, like every Task 4 deliverable, and links the PR and the engineer's conclusions.
 - **Validation**: Tests compile/run locally and reflect the intended behavior. New tests must fail at this step (use xfail if needed); a passing new test does not discriminate between old and new behaviors.
-- **Note**: Confirm that the preliminary tests are a straightforward illustration of the documented behavior and correct if needed. Post the branch compare link (`https://github.com/{owner}/{repo}/compare/main...{branch}`) in the issue so the maintainer can review the work before any PR exists, then **stop**. Do not proceed to other tasks without approval on the documentation and the preliminary tests.
+- **Note**: Confirm that the preliminary tests are a straightforward illustration of the documented behavior and correct if needed. Post the branch compare link (`https://github.com/{owner}/{repo}/compare/main...{branch}`) in the issue so the maintainer can review the work before any PR exists, with the handoff (see *Handoff*), then **stop**: this deliverable is the engineer's last (see *Handoff*). Do not proceed to other tasks without approval on the documentation and the preliminary tests.
+
+## Handoff
+- **Objective**: Give the fresh engineer of Task 5 everything the Task 4 engineer knows. Anything the maintainer cannot see on the issue, in a commit or in a file is lost when the engineer stops.
+- **By**: `scm-engineer` writes it in every Task 4 deliverable; on approval, the conductor stops the engineer and starts a fresh one for Task 5.
+- **Activities**: the Task 4 deliverable has a handoff section, with these items:
+  1. **Decisions and rulings**: the decisions and maintainer rulings that apply to the code.
+  2. **Internal structures**: the internal structures chosen by the plan.
+  3. **Departures from the plan**: any, with the reason; "none" otherwise.
+  4. **Test commands**: the commands that run the tests.
+  5. **Failure record**: the record of the failing tests, so the check of the branch state compares against one place.
+  6. **What Task 5 still has to do**.
+  7. **Patches of the questioned update**, after a return to Task 4 only: the documentation and test diff approved at the previous Task 4 and now replaced, as `git diff` output limited to the documentation and test files, in a collapsed `<details>` block. On a first Task 4 there is none: the branch diff is the patch.
+- **Citations**: to show what goes wrong, cite the code base as fenced excerpts, each headed by its path, its line range and the short SHA it was read at (`tools/x.sh` L40-52 @ `abc1234`). A permalink may go with an excerpt but never replaces it: a sync rebases the branch and changes every SHA, so a link can stop resolving.
+- **The last deliverable counts**: with iterations, the handoff that counts is the one in the last Task 4 deliverable, the one the maintainer approves. Each revision restates it in full and never points to an earlier comment for part of it. An engineer replaced while cold during Task 4 takes the handoff over the same way.
+- **Validation**: The handoff has the items above, and the failure record matches the branch.

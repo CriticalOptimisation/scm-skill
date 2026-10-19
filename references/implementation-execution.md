@@ -36,14 +36,14 @@ This segment covers documentation, testing, implementation, and code review.
   - Perform manual verification steps if required by the issue.
   - Commit the code before each validation attempt. It will be easier to manually repeat the tests, if needed, if the tested code matches a well-defined commit.
 - **Validation**: Tests pass locally and test results are documented. CI is expected to mirror the local run.
-- **Note**: Do not revisit the test design from *Tests Development* once *Functionality Implementation* begins. Instead return to Task 4 after human approval of an adequate justification if the core tests are wrong.
+- **Note**: Do not revisit the test design from *Tests Development* once *Functionality Implementation* begins. Instead, if the core tests are wrong, return to Task 4 as *Return to Task 4* in `implementation.md` says.
 
 ## Code Review Request
 - **Objective**: Surface the work for maintainers' review.
 - **By**: `scm-engineer` opens the PR, syncs the branch with main when ordered, and addresses review feedback; the conductor enables auto-merge, checks that the branch is not behind main, requests the review, and forwards the id of each review comment, to the same engineer or to a new one according to the cache temperature (see *Conductor and Engineer* in SKILL.md).
 - **Activities**:
   - Open a PR with a descriptive title and body referencing the issue.
-  - Open the PR when the first version is ready for review, not earlier. Its body carries `Closes #N` for the issue: this links the PR to the issue, so the board workflows move the **issue** to *In review* and GitHub closes it at merge. The PR gets no card.
+  - Open the PR when Task 5 is ready to conclude, after the last commit to the code base, not earlier: here, when the first version is ready for review. A return to Task 4 opens it otherwise, with no auto-merge (see *Return to Task 4* in `implementation.md`). Its body carries `Closes #N` for the issue: this links the PR to the issue, so the board workflows move the **issue** to *In review* and GitHub closes it at merge. The PR gets no card.
   - Enable auto-merge right away (`gh pr merge --auto --squash`): the maintainer's approving review then triggers the merge.
   - Check that the branch is not behind `main` (see *Sync with `main`* in `SKILL.md`); if it is, the engineer syncs it first.
   - Assign the **maintainers team** as reviewers (@CriticalOptimisation/maintainers).
