@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# shellcheck disable=SC2016 # the patterns are literal text of the skill files: backquotes and $ are Markdown, never expanded
 # Structural tests for SKILL.md content (#13, #16, #20, #21, #23, #24, #32).
 
 bats_require_minimum_version 1.5.0
@@ -458,7 +459,7 @@ indexed_templates() {
 @test "templates: the index table and the template files match" {
   run --separate-stderr indexed_templates
   [[ -z "$stderr" ]]
-  expected=$(cd "$REFS" && ls template-*.md 2>/dev/null | sort)
+  expected=$(find "$REFS" -maxdepth 1 -name 'template-*.md' -printf '%f\n' | sort)
   [[ -n "$output" ]]
   [[ "$output" == "$expected" ]]
 }
@@ -752,6 +753,8 @@ EXEC_MD="$REFS/implementation-execution.md"
   [[ "$output" == *'stops the Task 4 engineer'* ]]
 }
 
+return 0
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
@@ -764,3 +767,4 @@ EXEC_MD="$REFS/implementation-execution.md"
 # | #30    | a sync is a Task 5 activity; Task 6 aborts when main moves (#27)|
 # | #31    | change-history templates per language; add-on templates (#24)|
 # | #34    | engineer stops at end of Task 4; Start of/Return to Task 4 (#32)|
+# | #36    | shellcheck-clean: SC2016 directive, find (#29)                |

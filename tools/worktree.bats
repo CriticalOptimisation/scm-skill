@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# shellcheck disable=SC2154 # $stderr is set by bats run --separate-stderr, unknown to shellcheck
 # Contract of tools/worktree.sh (#126).
 #
 # Each test sets up a throwaway repository with its bare remote: nothing touches
@@ -15,7 +16,7 @@ setup() {
   MAIN="$TMP/main"
   git init -q --bare -b main "$ORIGIN"
   git init -q -b main "$MAIN"
-  cd "$MAIN"
+  cd "$MAIN" || return
   git config user.email test@example.invalid
   git config user.name test
   mkdir tools
@@ -226,7 +227,7 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$stderr" == *"removed: 7-trial"* ]]
   [ ! -e .worktrees/7-trial ]
-  [ -z "$(git worktree list | grep 7-trial)" ]
+  [[ "$(git worktree list)" != *7-trial* ]]
 }
 
 @test "drop refuses a worktree that carries changes" {
@@ -353,9 +354,12 @@ teardown() {
   [ ! -e .worktrees/7-trial ]
 }
 
+return 0
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #6     | English names; stderr asserted on every run; edge cases (#3)  |
 # | #9     | clean link runs print exactly the list line (#4)              |
 # | #12    | never opens VS Code: VSCODE_IPC_HOOK_CLI unset (#7)           |
+# | #36    | shellcheck-clean: cd || return, SC2154, SC2143 (#29)          |

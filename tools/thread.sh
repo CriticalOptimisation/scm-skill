@@ -137,7 +137,7 @@ fetch_thread() {
 }
 
 # jq definitions shared by the formatters.
-# shellcheck disable=SC2016
+# shellcheck disable=SC2016 # $vars of the jq program, for jq, not the shell
 readonly JQ_LIB='
 def text: (. // "") | gsub("\r\n"; "\n");
 def who: if . == null then "ghost" else .login end;
@@ -240,6 +240,7 @@ cmd_get() {
     out=$(jq -r "$JQ_LIB"'
       { n: "-", id: .node_id, date: .created_at, author: (.user | who), kind: "comment", body } | block' <<< "$doc")
   else
+    # shellcheck disable=SC2016 # $vars of the GraphQL query, for gh, not the shell
     doc=$(gh_call api graphql -f id="$id" -f query='
 query($id: ID!) {
   node(id: $id) {
@@ -285,6 +286,7 @@ cmd_post() {
 cmd_reply() {
   local doc pr dbid out
   read_body
+  # shellcheck disable=SC2016 # $vars of the GraphQL query, for gh, not the shell
   doc=$(gh_call api graphql -f id="$1" -f query='
 query($id: ID!) {
   node(id: $id) { __typename ... on PullRequestReviewComment { databaseId pullRequest { number } } }
@@ -310,6 +312,7 @@ main() {
     esac
   done
   local n=${#args[@]}
+  # shellcheck disable=SC2015 # usage exits: it runs only when a check fails
   case $cmd in
     index | last) (( n == 1 )) && [[ ${args[0]} =~ ^[0-9]+$ ]] || usage ;;
     read) (( n == 2 )) && [[ ${args[0]} =~ ^[0-9]+$ ]] || usage ;;
@@ -336,7 +339,11 @@ main() {
 main "$@"
 exit $?
 
+# shellcheck disable=SC2317 # the guard of template-shell.md before the change history, never reached
+return 0
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #30    | new: index, read, last, get, post, reply (#27)                |
+# | #36    | shellcheck directives with their reason (#29)                 |

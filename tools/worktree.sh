@@ -38,7 +38,7 @@ checkout_kind() {
   top=$(toplevel) || exit
   gitdir=$(cd "$top" && realpath "$(git rev-parse --git-dir)") || die "$E_FAIL" "git rev-parse failed"
   common=$(cd "$top" && realpath "$(git rev-parse --git-common-dir)") || die "$E_FAIL" "git rev-parse failed"
-  if [[ -f $top/.git ]]; then dotgit=file
+  if [[ -f $top/.git ]]; then dotgit='file'
   elif [[ -d $top/.git ]]; then dotgit=directory
   else dotgit=missing
   fi
@@ -268,6 +268,10 @@ dispatch() {
 }
 
 dispatch "$@"
+exit $?
+
+# shellcheck disable=SC2317 # the guard of template-shell.md before the change history, never reached
+return 0
 
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
@@ -276,3 +280,4 @@ dispatch "$@"
 # | #9     | link list in tools/worktree.links or .worktree-links (#4)     |
 # | #9     | a list ending in a comment or blank line no longer fails (#4) |
 # | #12    | new opens the worktree's .git in VS Code so it is listed (#7) |
+# | #36    | dotgit='file' (SC2209); exit $? before the block (#29)        |

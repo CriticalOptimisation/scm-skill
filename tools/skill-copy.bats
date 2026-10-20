@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# shellcheck disable=SC2030,SC2031 # each @test runs in its own process: its export of SKILL_COPY_STARTS is meant to stay local
 # Contract of tools/skill-copy.sh (#23).
 #
 # Each test sets up a throwaway skill repository and a throwaway project, each
@@ -53,7 +54,7 @@ teardown() {
 # repo <dir>: a new repository with a test identity; leaves the shell in it.
 repo() {
   git init -q -b main "$1"
-  cd "$1"
+  cd "$1" || return
   git config user.email test@example.invalid
   git config user.name test
 }
@@ -98,7 +99,7 @@ pid() {
 # skill, with /settings.json ignored, and sets H to the new commit.
 commit_hook() {
   (
-    cd "$SKILL"
+    cd "$SKILL" || return
     mkdir -p tools
     printf '%s\n' "$1" > tools/skill-copy-hook.sh
     printf '/.worktrees/\n/settings.json\n' > .gitignore
@@ -360,7 +361,7 @@ two_projects() {
   new_project "$WORK/proj2"
   P2=$(pid "$WORK/proj2")
   SKILL_COPY_NOW=1000 "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
-  cd "$PROJ"
+  cd "$PROJ" || return
   SKILL_COPY_NOW=1100 "$SCRIPT" use "$SKILL" "$A" 2>/dev/null
 }
 
@@ -544,6 +545,7 @@ USAGE="usage: skill-copy.sh use <skill repo> <ref> [--skills-dir <dir>] [--agent
   before=$(snapshot)
   for args in "" "unknown" "use" "use x" "use x y --bogus" "use x y --skills-dir" \
               "update" "update x y" "prune" "prune x y" "status" "status x y"; do
+    # shellcheck disable=SC2086 # split on purpose: one word per argument
     run --separate-stderr "$SCRIPT" $args
     [ "$status" -eq 2 ]
     [[ "$stderr" == *"skill-copy: $USAGE"* ]]
@@ -970,8 +972,11 @@ skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
   [ ! -e "$SKILL/.worktrees/skill-$A-$PP" ]
 }
 
+return 0
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #25    | contract, refusals and edge cases; agents.bats converted (#23) |
 # | #28    | update <copy>: core, edge cases; frozen marker; placeholders removed (#26)|
+# | #36    | shellcheck-clean: cd || return, directives (#29)              |

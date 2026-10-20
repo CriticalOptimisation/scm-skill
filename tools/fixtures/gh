@@ -21,7 +21,7 @@ for a in "$@"; do
 done
 while IFS=$'\t' read -r pat ans; do
   [[ -z $pat || $pat == '#'* ]] && continue
-  # shellcheck disable=SC2053
+  # shellcheck disable=SC2053 # $pat is a glob on purpose: the rules match by pattern
   if [[ $call == $pat ]]; then
     if [[ $ans == '!'* ]]; then
       code=${ans%% *}; code=${code#!}
@@ -35,7 +35,11 @@ done < "${GH_STUB_RULES:?}"
 printf 'gh stub: no rule for: %s\n' "$call" >&2
 exit 99
 
+# shellcheck disable=SC2317 # the guard of template-shell.md before the change history, never reached
+return 0
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #30    | new: gh stub answering from fixtures by rule (#27)            |
+# | #36    | reason of the SC2053 directive (#29)                          |

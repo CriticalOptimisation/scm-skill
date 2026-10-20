@@ -105,7 +105,17 @@ An add-on may ship **change-history templates**, for file types that scm-skill d
 
 ## Requirements
 
-Linux, bash, git, `flock` (util-linux), GNU coreutils (`mv -T`), procps (`pgrep`, `ps`), and, for `tools/thread.sh` and `tools/board.sh`, `gh` (with the `project` scope) and `jq`. The tests need bats ≥ 1.5: `bats tools/*.bats`.
+Linux, bash, git, `flock` (util-linux), GNU coreutils (`mv -T`), procps (`pgrep`, `ps`), and, for `tools/thread.sh` and `tools/board.sh`, `gh` (with the `project` scope) and `jq`. The tests need bats ≥ 1.5 (see *Tests*).
+
+## Tests
+
+Run the whole suite from the root of a checkout: `bats tools/`. The suites need git, jq and the requirements above, but no token and no network: `tools/thread.sh` and `tools/board.sh` are tested against the `gh` stub in `tools/fixtures/`. [`shellcheck`](https://www.shellcheck.net/) is optional on a workstation: `tools/shellcheck.bats` checks that `tools/*.sh`, `tools/*.bats` and `tools/fixtures/gh` are shellcheck-clean, and that every `# shellcheck disable=` directive gives its reason after a `#`. It is skipped without shellcheck. In CI it is required (see *Continuous integration*).
+
+### Continuous integration
+
+The workflow `CI` (`.github/workflows/ci.yml`) runs on every pull request, on every push to `main`, and by hand (`gh workflow run CI`). Its single job, and so its check, is named **`bats`**. It runs on `ubuntu-24.04`, with bats, ShellCheck and jq from that release's packages (bats 1.10.0, ShellCheck 0.9.0). It installs the three and prints their versions, then runs `bats tools/`. It fails if a test fails, and also if any test is skipped, so `tools/shellcheck.bats` always runs in CI. Its permissions are `contents: read`, and its actions are pinned to a commit SHA. Moving to a newer runner is its own issue.
+
+To make the check required on `main`: *Settings → Rules → Rulesets → Protect main → Require status checks to pass → Add checks → `bats`* (source: GitHub Actions). The check must have run once before it can be picked. Until it is required, auto-merge does not wait for it.
 
 ## Changing the process
 
