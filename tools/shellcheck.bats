@@ -48,3 +48,21 @@ EOF
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
+
+# --- Edge cases -----------------------------------------------------------
+
+@test "the reason check catches a directive without a reason, and passes one with it" {
+  planted="$BATS_TEST_TMPDIR/directives.sh"
+  printf '%s\n' '#!/usr/bin/env bash' \
+    '# shellcheck disable=SC2086' \
+    '  # shellcheck disable=SC2016,SC2015' \
+    '# shellcheck disable=SC2086 #' \
+    '# shellcheck disable=SC2154 # set by the caller' \
+    '# shellcheck source=/dev/null' > "$planted"
+  run unreasoned "$planted"
+  [ "$status" -eq 0 ]
+  [ "${#lines[@]}" -eq 3 ]
+  [[ "${lines[0]}" == "$planted:2:"* ]]
+  [[ "${lines[1]}" == "$planted:3:"* ]]
+  [[ "${lines[2]}" == "$planted:4:"* ]]
+}
