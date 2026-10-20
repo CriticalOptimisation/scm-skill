@@ -22,6 +22,32 @@ setup() {
   export GH_STUB_RULES="$BATS_TEST_TMPDIR/gh.rules"
   : > "$GH_STUB_LOG"
   OUT="$BATS_TEST_TMPDIR/overflow.txt"
+  # The default overflow files go to TMPDIR: one per test, outside any repo.
+  export TMPDIR="$BATS_TEST_TMPDIR/tmp"
+  mkdir -p "$TMPDIR"
+}
+
+# Checks the overflow report in $output for the file $1 (#33): the four
+# instruction lines, then one index line per message, "<start>-<end> <id>",
+# whose blocks follow each other and cover the file; line <start> of the
+# file names the message's id.
+check_report() {
+  local file=$1 bytes lines next=1 range id start end
+  bytes=$(wc -c < "$file")
+  lines=$(wc -l < "$file")
+  [[ "$(sed -n 1p <<< "$output")" == "overflow $lines lines $bytes bytes -> $file" ]]
+  [[ "$(sed -n 2p <<< "$output")" == "read it in parts with your Read tool (offset/limit), using the index below; delete it when done (rm -- $file)" ]]
+  [[ "$(sed -n 3p <<< "$output")" == 'if the file is missing, stop and report BLOCKED: do not retry' ]]
+  [[ "$(sed -n 4p <<< "$output")" == 'index:' ]]
+  [[ "$(sed -n '5,$p' <<< "$output" | wc -l)" -ge 1 ]]
+  while read -r range id; do
+    start=${range%-*} end=${range#*-}
+    [[ "$start" -eq "$next" ]]
+    [[ "$end" -ge "$start" ]]
+    [[ "$(sed -n "${start}p" "$file")" == *" $id "* ]]
+    next=$((end + 1))
+  done < <(sed -n '5,$p' <<< "$output")
+  [[ "$next" -eq $((lines + 1)) ]]
 }
 
 # Writes the stub's rules: each argument is "<glob>|<answer>".
@@ -167,14 +193,17 @@ Approved' ]]
 
 # --- the overflow file -------------------------------------------------------
 
-@test "overflow: a long output goes in full to the file, one line on stdout, exit 3" {
+@test "overflow: a long output goes in full to the file, the report on stdout, exit 3" {
   issue_rules
   run --separate-stderr "$THREAD" index 27 -o "$OUT" --max-lines 2
   [[ -z "$stderr" ]]
   [[ "$status" -eq 3 ]]
   [[ "$(cat "$OUT")" == "$ISSUE_INDEX" ]]
-  bytes=$(wc -c < "$OUT")
-  [[ "$output" == "overflow 4 lines $bytes bytes -> $OUT" ]]
+  check_report "$OUT"
+  [[ "$(sed -n '5,$p' <<< "$output")" == '1-1 I_27
+2-2 IC_1
+3-3 IC_2
+4-4 IC_3' ]]
 }
 
 @test "overflow: a short output removes a file left by an earlier run" {
@@ -187,15 +216,109 @@ Approved' ]]
   [[ ! -e "$OUT" ]]
 }
 
-@test "the reading commands require -o: usage error, exit 2" {
-  issue_rules
+# REVIEW PLACEHOLDER (#33): the reading commands require -o: usage error, exit 2 -> without -o, a short output goes to stdout and no file is written
+# @test "the reading commands require -o: usage error, exit 2" {
+#   issue_rules
+#   for cmd in "index 27" "read 27 1" "last 27" "get IC_1"; do
+#     # shellcheck disable=SC2086 # split on purpose: one word per argument
+#     run --separate-stderr "$THREAD" $cmd
+#     [[ "$status" -eq 2 ]]
+#     [[ "$stderr" == *usage* ]]
+#     [[ -z "$output" ]]
+#   done
+# }
+
+# --- without -o, -o checked, cleaning (#33) ------------------------------------
+
+@test "without -o, a short output goes to stdout and no file is written" {
+  rules '*after=C1*|issue-p2.json' '*IC_1*|node-IC_1.json' '*issueOrPullRequest*|issue-p1.json'
   for cmd in "index 27" "read 27 1" "last 27" "get IC_1"; do
     # shellcheck disable=SC2086 # split on purpose: one word per argument
     run --separate-stderr "$THREAD" $cmd
-    [[ "$status" -eq 2 ]]
-    [[ "$stderr" == *usage* ]]
-    [[ -z "$output" ]]
+    [[ -z "$stderr" ]]
+    [[ "$status" -eq 0 ]]
+    [[ -n "$output" ]]
   done
+  run --separate-stderr "$THREAD" index 27
+  [[ "$output" == "$ISSUE_INDEX" ]]
+  [[ -z "$(ls -A "$TMPDIR")" ]]
+}
+
+@test "without -o, an overflow goes to a new file in TMPDIR, with the report and its index" {
+  issue_rules
+  run --separate-stderr "$THREAD" index 27 --max-lines 2
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 3 ]]
+  file=$(sed -n '1s/.* -> //p' <<< "$output")
+  [[ "$file" == "$TMPDIR"/thread.sh.*.txt ]]
+  [[ "$(cat "$file")" == "$ISSUE_INDEX" ]]
+  check_report "$file"
+}
+
+@test "read overflow: the index gives the block of every message in the file" {
+  issue_rules
+  run --separate-stderr "$THREAD" read 27 1- --max-lines 2
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 3 ]]
+  file=$(sed -n '1s/.* -> //p' <<< "$output")
+  check_report "$file"
+  [[ "$(sed -n '5,$p' <<< "$output" | cut -d' ' -f2)" == 'I_27
+IC_1
+IC_2
+IC_3' ]]
+}
+
+@test "index overflow: an inline comment's body is in the block of its message" {
+  pr6_rules
+  run --separate-stderr "$THREAD" index 6 --max-lines 2
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 3 ]]
+  file=$(sed -n '1s/.* -> //p' <<< "$output")
+  check_report "$file"
+  [[ "$(sed -n 5,9p <<< "$output")" == '1-1 PR_6
+2-2 PRR_1
+3-6 PRRC_5
+7-8 PRRC_6
+9-9 PRR_2' ]]
+}
+
+@test "-o /dev/stdout is refused before any call to GitHub, exit 2" {
+  issue_rules
+  run --separate-stderr "$THREAD" index 27 -o /dev/stdout
+  [[ "$status" -eq 2 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'thread.sh: -o needs a regular file; omit -o to read the output on stdout' ]]
+  [[ ! -s "$GH_STUB_LOG" ]]
+}
+
+@test "-o inside a git work tree: refused unless git ignores it" {
+  issue_rules
+  repo="$BATS_TEST_TMPDIR/repo"
+  git init -q "$repo"
+  printf '/scratch/\n' > "$repo/.gitignore"
+  mkdir "$repo/scratch"
+  run --separate-stderr "$THREAD" index 27 -o "$repo/out.txt"
+  [[ "$status" -eq 2 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == "thread.sh: -o $repo/out.txt is not ignored by git; omit -o or use a path outside the project" ]]
+  [[ ! -s "$GH_STUB_LOG" ]]
+  run --separate-stderr "$THREAD" index 27 -o "$repo/scratch/out.txt"
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "$ISSUE_INDEX" ]]
+}
+
+@test "cleaning: default overflow files older than 1 h are deleted; others are kept" {
+  issue_rules
+  touch -d '-61 minutes' "$TMPDIR/thread.sh.old111.txt" "$TMPDIR/other.txt" "$OUT"
+  touch -d '-30 minutes' "$TMPDIR/thread.sh.new222.txt"
+  run --separate-stderr "$THREAD" index 27 -o "$BATS_TEST_TMPDIR/elsewhere.txt"
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 0 ]]
+  [[ ! -e "$TMPDIR/thread.sh.old111.txt" ]]
+  [[ -e "$TMPDIR/thread.sh.new222.txt" ]]
+  [[ -e "$TMPDIR/other.txt" ]]
+  [[ -e "$OUT" ]]
 }
 
 @test "a failed page fails the command: one line on stderr, no partial output" {
@@ -318,7 +441,7 @@ Line two' ]]
   run --separate-stderr "$THREAD" get IC_1 -o "$OUT"
   [[ -z "$stderr" ]]
   [[ "$status" -eq 3 ]]
-  [[ "$output" == "overflow 2 lines $(wc -c < "$OUT") bytes -> $OUT" ]]
+  check_report "$OUT"
   [[ "$(sed -n 2p "$OUT")" == "$long" ]]
 }
 
