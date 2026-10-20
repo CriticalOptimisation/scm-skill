@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# shellcheck disable=SC2016 # the patterns are literal text of the skill files: backquotes and $ are Markdown, never expanded
 # Structural tests for SKILL.md content (#13, #16, #20, #21, #23, #24, #32).
 
 bats_require_minimum_version 1.5.0
@@ -458,7 +459,7 @@ indexed_templates() {
 @test "templates: the index table and the template files match" {
   run --separate-stderr indexed_templates
   [[ -z "$stderr" ]]
-  expected=$(cd "$REFS" && ls template-*.md 2>/dev/null | sort)
+  expected=$(find "$REFS" -maxdepth 1 -name 'template-*.md' -printf '%f\n' | sort)
   [[ -n "$output" ]]
   [[ "$output" == "$expected" ]]
 }

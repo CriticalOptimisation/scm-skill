@@ -47,7 +47,7 @@ STUB
 
   git init -q --bare -b main "$ORIGIN"
   git init -q -b main "$MAIN"
-  cd "$MAIN"
+  cd "$MAIN" || return
   git config user.email test@example.invalid
   git config user.name test
   mkdir tools

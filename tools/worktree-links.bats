@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# shellcheck disable=SC2154 # $stderr is set by bats run --separate-stderr, unknown to shellcheck
 # Where tools/worktree.sh finds the project's link list (#4).
 #
 # The list is a project file: tools/worktree.links, or else .worktree-links at
@@ -31,7 +32,7 @@ setup() {
   WT="$MAIN/.worktrees/7-try"
   git init -q --bare -b main "$ORIGIN"
   git init -q -b main "$MAIN"
-  cd "$MAIN"
+  cd "$MAIN" || return
   git config user.email test@example.invalid
   git config user.name test
   printf '/data\n/other\n/.worktrees/\n' > .gitignore
@@ -87,7 +88,7 @@ core_new_links() {
 core_link_idempotent() {
   write_list "$1" data
   "$SCRIPT" new feature 7 try
-  cd "$WT"
+  cd "$WT" || return
   run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 0 ]
   has_line "$stderr" "$(list_line "$1")"
@@ -100,7 +101,7 @@ core_link_idempotent() {
 core_link_repairs() {
   write_list "$1" data
   "$SCRIPT" new feature 7 try
-  cd "$WT"
+  cd "$WT" || return
   rm data
   run --separate-stderr "$SCRIPT" link
   [ "$status" -eq 0 ]
@@ -111,7 +112,7 @@ core_link_repairs() {
 core_check() {
   write_list "$1" data
   "$SCRIPT" new feature 7 try
-  cd "$WT"
+  cd "$WT" || return
   run --separate-stderr "$SCRIPT" check
   [ "$status" -eq 0 ]
   has_line "$stderr" "$(list_line "$1")"

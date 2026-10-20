@@ -38,7 +38,7 @@ checkout_kind() {
   top=$(toplevel) || exit
   gitdir=$(cd "$top" && realpath "$(git rev-parse --git-dir)") || die "$E_FAIL" "git rev-parse failed"
   common=$(cd "$top" && realpath "$(git rev-parse --git-common-dir)") || die "$E_FAIL" "git rev-parse failed"
-  if [[ -f $top/.git ]]; then dotgit=file
+  if [[ -f $top/.git ]]; then dotgit='file'
   elif [[ -d $top/.git ]]; then dotgit=directory
   else dotgit=missing
   fi

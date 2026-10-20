@@ -190,7 +190,7 @@ Approved' ]]
 @test "the reading commands require -o: usage error, exit 2" {
   issue_rules
   for cmd in "index 27" "read 27 1" "last 27" "get IC_1"; do
-    # shellcheck disable=SC2086
+    # shellcheck disable=SC2086 # split on purpose: one word per argument
     run --separate-stderr "$THREAD" $cmd
     [[ "$status" -eq 2 ]]
     [[ "$stderr" == *usage* ]]
@@ -220,6 +220,7 @@ SCM_BODY
   [[ -z "$stderr" ]]
   [[ "$status" -eq 0 ]]
   [[ "$output" == 'https://github.com/acme/widgets/issues/27#issuecomment-1010' ]]
+  # shellcheck disable=SC2016 # literal text of the posted body
   [[ "$(cat "$GH_STUB_LOG.stdin")" == '## Plan
 
 `SKILL.md` and $HOME stay as written.' ]]
@@ -231,7 +232,7 @@ SCM_BODY
   [[ "$status" -eq 2 ]]
   [[ -z "$output" ]]
   [[ "$stderr" == 'thread.sh: empty body: nothing posted' ]]
-  ! grep -q 'comments' "$GH_STUB_LOG"
+  run ! grep -q 'comments' "$GH_STUB_LOG"
 }
 
 @test "reply: answers the inline thread of a comment; only the URL is printed" {
@@ -360,7 +361,7 @@ Line two' ]]
   [[ "$status" -eq 1 ]]
   [[ -z "$output" ]]
   [[ "$stderr" == 'thread.sh: IC_1 is not an inline review comment' ]]
-  ! grep -q replies "$GH_STUB_LOG"
+  run ! grep -q replies "$GH_STUB_LOG"
 }
 
 @test "post and reply take no -o; post takes a number" {

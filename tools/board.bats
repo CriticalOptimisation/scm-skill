@@ -101,7 +101,7 @@ last_line_of() {
   [[ "$status" -eq 1 ]]
   [[ -z "$output" ]]
   [[ "$stderr" == 'board.sh: #27 is In progress, not Ready' ]]
-  ! grep -q updateProjectV2ItemFieldValue "$GH_STUB_LOG"
+  run ! grep -q updateProjectV2ItemFieldValue "$GH_STUB_LOG"
 }
 
 @test "move: an unknown column is refused with the valid ones, nothing moved" {
@@ -110,7 +110,7 @@ last_line_of() {
   [[ "$status" -eq 1 ]]
   [[ -z "$output" ]]
   [[ "$stderr" == 'board.sh: unknown column: Doing (valid: Backlog, Ready, In progress, In review, Done)' ]]
-  ! grep -q updateProjectV2ItemFieldValue "$GH_STUB_LOG"
+  run ! grep -q updateProjectV2ItemFieldValue "$GH_STUB_LOG"
 }
 
 @test "move: the mutation's answer is checked against <to>" {
@@ -127,7 +127,7 @@ last_line_of() {
   [[ "$status" -eq 1 ]]
   [[ -z "$output" ]]
   [[ "$stderr" == 'board.sh: #27 has no card' ]]
-  ! grep -q updateProjectV2ItemFieldValue "$GH_STUB_LOG"
+  run ! grep -q updateProjectV2ItemFieldValue "$GH_STUB_LOG"
 }
 
 # --- check -------------------------------------------------------------------
@@ -229,7 +229,7 @@ PR #22 was reopened; its card is In progress, not In review' ]]
   [[ "$status" -eq 1 ]]
   [[ -z "$output" ]]
   [[ "$stderr" == 'board.sh: unknown column: Doing (valid: Backlog, Ready, In progress, In review, Done)' ]]
-  ! grep -q updateProjectV2ItemFieldValue "$GH_STUB_LOG"
+  run ! grep -q updateProjectV2ItemFieldValue "$GH_STUB_LOG"
 }
 
 @test "move: an issue on several boards is refused before any lookup of the field" {
@@ -238,7 +238,7 @@ PR #22 was reopened; its card is In progress, not In review' ]]
   [[ "$status" -eq 1 ]]
   [[ -z "$output" ]]
   [[ "$stderr" == 'board.sh: #27 is on 2 boards (#3, #5): ask the maintainer' ]]
-  ! grep -q ProjectV2SingleSelectField "$GH_STUB_LOG"
+  run ! grep -q ProjectV2SingleSelectField "$GH_STUB_LOG"
 }
 
 @test "add-pr: a PR that closes no issue with a card is refused" {
@@ -247,7 +247,7 @@ PR #22 was reopened; its card is In progress, not In review' ]]
   [[ "$status" -eq 1 ]]
   [[ -z "$output" ]]
   [[ "$stderr" == 'board.sh: PR #30 closes no issue with a card' ]]
-  ! grep -q addProjectV2ItemById "$GH_STUB_LOG"
+  run ! grep -q addProjectV2ItemById "$GH_STUB_LOG"
 }
 
 @test "a failed gh call is one line on stderr" {
@@ -261,7 +261,7 @@ PR #22 was reopened; its card is In progress, not In review' ]]
 @test "usage errors: wrong arguments exit 2 without calling gh" {
   rules
   for args in "status" "status x" "move 27 Ready" "check now" "list" "add-pr x"; do
-    # shellcheck disable=SC2086
+    # shellcheck disable=SC2086 # split on purpose: one word per argument
     run --separate-stderr "$BOARD" $args
     [[ "$status" -eq 2 ]]
     [[ -z "$output" ]]

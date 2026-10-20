@@ -86,6 +86,7 @@ query(\$owner: String!, \$name: String!, \$number: Int!) {
 # of board $1.
 status_field() {
   local doc
+  # shellcheck disable=SC2016 # $vars of the GraphQL query, for gh, not the shell
   doc=$(gh_call api graphql -f project="$1" -f query='
 query($project: ID!) {
   node(id: $project) { ... on ProjectV2 { field(name: "Status") { ... on ProjectV2SingleSelectField { id name options { id name } } } } }
@@ -203,6 +204,7 @@ cmd_list() {
 
 cmd_add_pr() {
   local n=$1 doc boards pr item opt now
+  # shellcheck disable=SC2016 # $vars of the GraphQL query, for gh, not the shell
   doc=$(gh_call api graphql -F number="$n" -f owner="$OWNER" -f name="$NAME" -f query='
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
@@ -220,6 +222,7 @@ query($owner: String!, $name: String!, $number: Int!) {
   esac
   status_field "$PROJECT"
   opt=$(option_of "$IN_REVIEW") || exit "$E_FAIL"
+  # shellcheck disable=SC2016 # $vars of the GraphQL query, for gh, not the shell
   doc=$(gh_call api graphql -f project="$PROJECT" -f content="$pr" -f query='
 mutation($project: ID!, $content: ID!) {
   addProjectV2ItemById(input: { projectId: $project, contentId: $content }) { item { id } }
@@ -234,6 +237,7 @@ mutation($project: ID!, $content: ID!) {
 main() {
   local cmd=${1:-}
   (( $# )) && shift
+  # shellcheck disable=SC2015 # usage exits: it runs only when a check fails
   case $cmd in
     status) (( $# == 1 )) && [[ $1 =~ ^[0-9]+$ ]] || usage ;;
     move) (( $# == 3 )) && [[ $1 =~ ^[0-9]+$ && -n $2 && -n $3 ]] || usage ;;
