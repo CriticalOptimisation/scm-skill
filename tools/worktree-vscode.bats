@@ -246,7 +246,10 @@ code_not_called() {
     'worktree: other is not ignored by git as a link: write "/other" in .gitignore, without a trailing slash'
 }
 
+return 0
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #12    | new shows the worktree in VS Code; edge cases (#7)            |
+# | #36    | shellcheck-clean: cd || return (#29)                          |

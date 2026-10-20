@@ -66,3 +66,10 @@ EOF
   [[ "${lines[1]}" == "$planted:3:"* ]]
   [[ "${lines[2]}" == "$planted:4:"* ]]
 }
+
+return 0
+
+# --- Change History -------------------------------------------------------
+# | PR     | Summary                                                       |
+# |--------|---------------------------------------------------------------|
+# | #36    | new: tools/ shellcheck-clean, directives give reasons (#29)   |

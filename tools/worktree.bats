@@ -354,9 +354,12 @@ teardown() {
   [ ! -e .worktrees/7-trial ]
 }
 
+return 0
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #6     | English names; stderr asserted on every run; edge cases (#3)  |
 # | #9     | clean link runs print exactly the list line (#4)              |
 # | #12    | never opens VS Code: VSCODE_IPC_HOOK_CLI unset (#7)           |
+# | #36    | shellcheck-clean: cd || return, SC2154, SC2143 (#29)          |

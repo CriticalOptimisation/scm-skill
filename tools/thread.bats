@@ -383,7 +383,10 @@ Line two' ]]
   grep -q 'repos/acme/widgets/issues/27/comments' "$GH_STUB_LOG"
 }
 
+return 0
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #30    | new: thread.sh contract, gh stubbed (#27)                     |
+# | #36    | run ! grep -q; directives with their reason (#29)             |

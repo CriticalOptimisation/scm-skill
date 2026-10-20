@@ -753,6 +753,8 @@ EXEC_MD="$REFS/implementation-execution.md"
   [[ "$output" == *'stops the Task 4 engineer'* ]]
 }
 
+return 0
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
@@ -765,3 +767,4 @@ EXEC_MD="$REFS/implementation-execution.md"
 # | #30    | a sync is a Task 5 activity; Task 6 aborts when main moves (#27)|
 # | #31    | change-history templates per language; add-on templates (#24)|
 # | #34    | engineer stops at end of Task 4; Start of/Return to Task 4 (#32)|
+# | #36    | shellcheck-clean: SC2016 directive, find (#29)                |

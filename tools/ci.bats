@@ -193,3 +193,10 @@ tap_of() {
   [[ -z "$stderr" ]]
   [ "$output" -eq 0 ]
 }
+
+return 0
+
+# --- Change History -------------------------------------------------------
+# | PR     | Summary                                                       |
+# |--------|---------------------------------------------------------------|
+# | #36    | new: CI workflow structure, skip guard, pinning, README (#29) |

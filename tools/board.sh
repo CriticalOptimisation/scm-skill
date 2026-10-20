@@ -259,7 +259,11 @@ main() {
 main "$@"
 exit $?
 
+# shellcheck disable=SC2317 # the guard of template-shell.md before the change history, never reached
+return 0
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #30    | new: status, move, check, list, add-pr (#27)                  |
+# | #36    | shellcheck directives with their reason (#29)                 |

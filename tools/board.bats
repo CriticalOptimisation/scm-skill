@@ -270,7 +270,10 @@ PR #22 was reopened; its card is In progress, not In review' ]]
   [[ ! -s "$GH_STUB_LOG" ]]
 }
 
+return 0
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #30    | new: board.sh contract; filteredCount tests moved here (#27)  |
+# | #36    | run ! grep -q: 8 assertions now run; reasons (#29)            |

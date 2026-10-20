@@ -972,8 +972,11 @@ skill_copy_link \"\$2/settings.json\" \"\$1/settings.json\""
   [ ! -e "$SKILL/.worktrees/skill-$A-$PP" ]
 }
 
+return 0
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
 # | #25    | contract, refusals and edge cases; agents.bats converted (#23) |
 # | #28    | update <copy>: core, edge cases; frozen marker; placeholders removed (#26)|
+# | #36    | shellcheck-clean: cd || return, directives (#29)              |

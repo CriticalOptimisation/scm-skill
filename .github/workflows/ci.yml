@@ -39,3 +39,8 @@ jobs:
           if grep -E '^ok [0-9]+ .* # skip' "$RUNNER_TEMP/bats.tap"; then
             echo "::error::a test was skipped in CI"; exit 1
           fi
+
+# --- Change History -------------------------------------------------------
+# | PR     | Summary                                                       |
+# |--------|---------------------------------------------------------------|
+# | #36    | CI workflow: bats tools/, shellcheck, jq, no skips (#29)      |
