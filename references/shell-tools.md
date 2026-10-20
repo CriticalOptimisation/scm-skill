@@ -15,14 +15,32 @@ Common rules:
 
 **Nothing is truncated.** Every list is paginated to its end. A page that cannot be fetched fails the command (exit `1`): it never prints a partial result, and it writes no overflow file.
 
-**The overflow file.** The reading commands (`index`, `read`, `last`, `get`) require `-o <file>`; without it they exit `2`. When the output is longer than 200 lines or 16 KiB (`--max-lines <n>` replaces the 200), it is written in full to `<file>`, stdout gets the single line `overflow <lines> lines <bytes> bytes -> <file>`, and the exit code is `3`: read the file, in parts if needed. Otherwise the output goes to stdout, the exit code is `0`, and `<file>` does not exist afterwards: a file left by an earlier run is removed. Put the file in the session's scratch directory.
+**The overflow file.** The reading commands (`index`, `read`, `last`, `get`) print their output on stdout, exit `0`, and write no file, as long as it is no longer than 200 lines and 16 KiB (`--max-lines <n>` replaces the 200). A longer output would flood the caller's context, so it is written in full to the **overflow file** instead, and stdout gets a short report, exit `3`:
+
+```
+overflow <lines> lines <bytes> bytes -> <absolute path>
+read it in parts with your Read tool (offset/limit), using the index below; delete it when done (rm -- <absolute path>)
+if the file is missing, stop and report BLOCKED: do not retry
+index:
+<start>-<end> <id>
+...
+```
+
+- **The index** has one line per message, in the order of the file: the first and last line of its block in the file (from `1`) and its node id. For `read`, `last` and `get`, a block is the message's index line, its body and the empty line after it; for `index`, it is the message's line and, for an inline comment, its indented body.
+- **The default overflow file**: without `-o`, the script creates it with `mktemp "${TMPDIR:-/tmp}/thread.sh.XXXXXX.txt"`, outside the project. If it cannot: exit `1`, one line on stderr.
+- **Cleaning**: every run of a reading command first deletes the default overflow files (`thread.sh.*.txt` in `${TMPDIR:-/tmp}`) last modified more than 60 minutes ago. No caller needs one for longer. A file named by `-o` is never cleaned.
+- **`-o <file>`** names the overflow file instead. It is checked before any call to GitHub; it is refused, exit `2`, with one line on stderr, when it is
+  - an existing file that is not a regular file, such as `/dev/stdout`: `thread.sh: -o needs a regular file; omit -o to read the output on stdout`;
+  - inside a git work tree and not ignored by git: `thread.sh: -o <file> is not ignored by git; omit -o or use a path outside the project`.
+  When the output is short, a regular file left at that path by an earlier run is removed.
+- **A missing overflow file** after exit `3` is a process failure, likely to repeat: the caller stops and reports `BLOCKED`, and does not retry.
 
 | Command | Output |
 |---|---|
-| `index <N> -o <file>` | The table of contents of issue or PR `#N`, one line per message (see below). |
-| `read <N> <range> -o <file>` | The messages of a slice of the index, in full. `<range>`: `5` (one message), `5-9`, `5-` (to the end), `-3` (the last three). A position past the end: exit `1`. |
-| `last <N> -o <file>` | The last message of the index, in full: `read <N> -1`. |
-| `get <id> -o <file>` | One message in full, of any kind, by its node id or numeric comment id. |
+| `index <N> [-o <file>]` | The table of contents of issue or PR `#N`, one line per message (see below). |
+| `read <N> <range> [-o <file>]` | The messages of a slice of the index, in full. `<range>`: `5` (one message), `5-9`, `5-` (to the end), `-3` (the last three). A position past the end: exit `1`. |
+| `last <N> [-o <file>]` | The last message of the index, in full: `read <N> -1`. |
+| `get <id> [-o <file>]` | One message in full, of any kind, by its node id or numeric comment id. |
 | `post <N>` | Posts the body read from stdin as a comment on issue or PR `#N`, and prints only the comment's URL. An empty body is refused (exit `2`), and nothing is posted. |
 | `reply <id>` | Replies, with the body read from stdin, to the inline review thread of comment `<id>` (`PRRC_…`), and prints only the reply's URL. Empty body: as `post`. |
 
