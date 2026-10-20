@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Structural tests for SKILL.md content (#13, #16, #20, #21, #23, #24).
+# Structural tests for SKILL.md content (#13, #16, #20, #21, #23, #24, #32).
 
 bats_require_minimum_version 1.5.0
 
@@ -547,6 +547,211 @@ indexed_templates() {
   done
 }
 
+# --- Engineer replaced at the end of Task 4 (#32) ---------------------------
+# When the maintainer approves a Task 4 deliverable, the conductor stops the
+# engineer, whatever the temperature, and a fresh one takes Task 5, primed by
+# the handoff. The PR is created when Task 5 is ready to conclude, after the
+# last commit to the code base. A return to Task 4 opens the PR with the
+# engineer's conclusions; the conductor agrees or escalates.
+
+TDD_MD="$REFS/test-driven-development.md"
+IMPL_MD="$REFS/implementation.md"
+EXEC_MD="$REFS/implementation-execution.md"
+
+@test "SKILL.md: the engineer is replaced when the maintainer approves a Task 4 deliverable, whatever the temperature" {
+  run --separate-stderr section 'Conductor and Engineer' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'**End of Task 4.**'* ]]
+  [[ "$output" == *'whatever the temperature'* ]]
+  run --separate-stderr grep -m1 '^\*\*Stopping an engineer\*\*' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'in three cases'* ]]
+  [[ "$output" == *'approves its Task 4 deliverable'* ]]
+}
+
+@test "SKILL.md Tasks 4 and 5: the handoff, the stop, the fresh engineer, the PR at the end of Task 5" {
+  run --separate-stderr grep -m1 '^4\. \*\*Test Driven Development\*\*' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'handoff'* ]]
+  [[ "$output" == *'stops the engineer'* ]]
+  run --separate-stderr grep -m1 '^5\. \*\*Implementation\*\*' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'fresh engineer'* ]]
+  [[ "$output" == *'after the last commit to the code base'* ]]
+  [[ "$output" == *'`REGRESS-TO-TASK-4`'* ]]
+  [[ "$output" != *'Ask permission'* ]]
+}
+
+@test "test-driven-development.md has a Handoff step with its seven items" {
+  run --separate-stderr section 'Handoff' "$TDD_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == '## Handoff'* ]]
+  for s in '**Decisions and rulings**' '**Internal structures**' '**Departures from the plan**' \
+           '**Test commands**' '**Failure record**' '**What Task 5 still has to do**' \
+           '**Patches of the questioned update**' '<details>' 'restates it in full' 'never replaces'; do
+    [[ "$output" == *"$s"* ]]
+  done
+  handoff=$(line_of '## Handoff' "$TDD_MD")
+  prelim=$(line_of '## Preliminary Tests Definition' "$TDD_MD")
+  [[ -n "$handoff" && -n "$prelim" ]]
+  (( prelim < handoff ))
+}
+
+@test "implementation.md: Start of Task 5 is the first step and opens no PR" {
+  run --separate-stderr grep -m1 '^## ' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == '## Start of Task 5' ]]
+  run --separate-stderr section 'Start of Task 5' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'No PR is opened here'* ]]
+  [[ "$output" != *'gh pr create'* ]]
+}
+
+@test "implementation.md Start of Task 5: the reading list in order, process from <skill>, change from the diff" {
+  run --separate-stderr section 'Start of Task 5' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'git -C <worktree> diff origin/main...HEAD'* ]]
+  [[ "$output" == *'from `<skill>`'* ]]
+  local prev=0 n
+  for s in '**The process**' '**The change**' '**The thread**' '**The preliminary tests**' '**The state of the branch**'; do
+    n=$(line_of "$s" "$IMPL_MD")
+    [[ -n "$n" ]]
+    (( n > prev ))
+    prev=$n
+  done
+}
+
+@test "scm-engineer: Task 4 is the last task; the Task 5 reading list; back to Task 4" {
+  grep -qF '**Task 4 is your last task.**' "$AGENT_MD"
+  grep -qF '**Back to Task 4** means' "$AGENT_MD"
+  local prev=0 n
+  for s in '**The process**' '**The change**' '**The thread**' '**The preliminary tests**' '**The state of the branch**'; do
+    n=$(line_of "$s" "$AGENT_MD")
+    [[ -n "$n" ]]
+    (( n > prev ))
+    prev=$n
+  done
+  run --separate-stderr frontmatter "$AGENT_MD" description
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'approves its Task 4 deliverable'* ]]
+}
+
+@test "implementation.md Return to Task 4: last commit, PR with the conclusions, required parts, agree or escalate" {
+  run --separate-stderr section 'Return to Task 4' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == '## Return to Task 4'* ]]
+  for s in 'last (unsuccessful) commit of Task 5' 'gh pr create --draft' 'thread.sh post <PR>' \
+           'No change-history commit and no auto-merge' \
+           '**Wrong tests**' '**False assumption**' '**Documentation**' '**Correction**' '**New placeholders**' \
+           '**agrees automatically**' '**escalates**' 'never refuses' 'second return to Task 4' \
+           'Task 4 gate is unchanged' 'cache-temperature'; do
+    [[ "$output" == *"$s"* ]]
+  done
+}
+
+@test "SKILL.md: the conductor agrees to or escalates a return to Task 4, and orders back to Task 4" {
+  run --separate-stderr grep -m1 '^- `REGRESS-TO-TASK-4 <url>`' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'agrees or escalates'* ]]
+  run --separate-stderr section 'Conductor and Engineer' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'*back to Task 4*'* ]]
+  run --separate-stderr grep -m1 '^\*\*Escalation\.\*\*' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'never refuses one'* ]]
+  [[ "$output" != *'or a return to Task 4'* ]]
+}
+
+@test "scm-engineer: REGRESS-TO-TASK-4 is valid only after the conclusions are posted on the PR" {
+  run --separate-stderr grep -m1 '^- `REGRESS-TO-TASK-4 <url>`' "$AGENT_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'**only if**'* ]]
+  [[ "$output" == *'on the PR'* ]]
+}
+
+@test "a return to Task 4 deletes no test and wipes the previous placeholders" {
+  for s in '**On a return to Task 4**' 'never deletes a test' 'wipes the placeholders'; do
+    grep -qF -- "$s" "$TDD_MD"
+  done
+  run --separate-stderr section 'Edge-cases Tests Expansion' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'*On a return to Task 4*'* ]]
+}
+
+@test "no process file asks the maintainer's leave to return to Task 4" {
+  run --separate-stderr grep -rnE 'Ask permission to return to Task 4|after human approval' "$SKILL_MD" "$BATS_TEST_DIRNAME/../agents" "$REFS"
+  [[ -z "$stderr" ]]
+  [[ -z "$output" ]]
+}
+
+@test "the PR opens when Task 5 is ready to conclude, after the last commit to the code base" {
+  run --separate-stderr section 'Prepare for Review' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'after the last commit to the code base'* ]]
+  [[ "$output" == *'gh pr ready <PR>'* ]]
+  run --separate-stderr section 'Code Review Request' "$EXEC_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'after the last commit to the code base'* ]]
+  run --separate-stderr section 'Kanban Board' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'after the last commit to the code base'* ]]
+  [[ "$output" == *'**a return to Task 4**'* ]]
+}
+
+@test "SKILL.md brief: the Task 5 subject index points at the handoff" {
+  run --separate-stderr section 'Conductor and Engineer' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'points at the handoff'* ]]
+}
+
+# Edge cases (#32, Task 5).
+
+@test "implementation.md: Start of Task 5 names none of the PR steps the ordering test finds by first match" {
+  run --separate-stderr section 'Start of Task 5' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  [[ -n "$output" ]]
+  for s in 'Open the PR' 'change history' 'gh pr merge --auto --squash' 'Assign the **maintainers team**'; do
+    [[ "$output" != *"$s"* ]]
+  done
+}
+
+@test "implementation.md: Return to Task 4 is the last step, after Prepare for Review" {
+  run --separate-stderr grep '^## ' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  [[ "${lines[-1]}" == '## Return to Task 4' ]]
+  [[ "${lines[-2]}" == '## Prepare for Review' ]]
+}
+
+@test "implementation.md Return to Task 4: the body carries Closes #N, the conclusions go in a comment, no review is requested" {
+  run --separate-stderr section 'Return to Task 4' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  for s in 'as a draft' '`Closes #N`' 'first comment of the PR' 'When the PR is open already' \
+           'requests no review on this PR' 'review it at will' 'dismisses it'; do
+    [[ "$output" == *"$s"* ]]
+  done
+  [[ "$output" != *'gh pr merge --auto'* ]]
+}
+
+@test "Prepare for Review: a PR opened by a return to Task 4 is marked ready, not opened again" {
+  run --separate-stderr section 'Prepare for Review' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  for s in 'open no other' 'gh pr ready <PR>' 'gh pr edit <PR> --body-file -' 'stay in their comment'; do
+    [[ "$output" == *"$s"* ]]
+  done
+  run --separate-stderr section 'Code Review Request' "$EXEC_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'as a draft'* ]]
+  [[ "$output" == *'gh pr ready <PR>'* ]]
+}
+
+@test "SKILL.md Kanban Task 5 row: the failure PR is a draft; auto-merge and review request for review only" {
+  run --separate-stderr grep -m1 '^  | 5\. Implementation |' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'as a draft, with its conclusions'* ]]
+  [[ "$output" == *'for review only'* ]]
+  [[ "$output" == *'stops the Task 4 engineer'* ]]
+}
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
@@ -558,3 +763,4 @@ indexed_templates() {
 # | #30    | engineer lifetime, brief, posting, board.sh, no bootstrap (#27)|
 # | #30    | a sync is a Task 5 activity; Task 6 aborts when main moves (#27)|
 # | #31    | change-history templates per language; add-on templates (#24)|
+# | #34    | engineer stops at end of Task 4; Start of/Return to Task 4 (#32)|
