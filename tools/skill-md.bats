@@ -763,3 +763,4 @@ EXEC_MD="$REFS/implementation-execution.md"
 # | #30    | engineer lifetime, brief, posting, board.sh, no bootstrap (#27)|
 # | #30    | a sync is a Task 5 activity; Task 6 aborts when main moves (#27)|
 # | #31    | change-history templates per language; add-on templates (#24)|
+# | #34    | engineer stops at end of Task 4; Start of/Return to Task 4 (#32)|
