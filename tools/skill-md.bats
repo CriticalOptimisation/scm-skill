@@ -704,6 +704,54 @@ EXEC_MD="$REFS/implementation-execution.md"
   [[ "$output" == *'points at the handoff'* ]]
 }
 
+# Edge cases (#32, Task 5).
+
+@test "implementation.md: Start of Task 5 names none of the PR steps the ordering test finds by first match" {
+  run --separate-stderr section 'Start of Task 5' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  [[ -n "$output" ]]
+  for s in 'Open the PR' 'change history' 'gh pr merge --auto --squash' 'Assign the **maintainers team**'; do
+    [[ "$output" != *"$s"* ]]
+  done
+}
+
+@test "implementation.md: Return to Task 4 is the last step, after Prepare for Review" {
+  run --separate-stderr grep '^## ' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  [[ "${lines[-1]}" == '## Return to Task 4' ]]
+  [[ "${lines[-2]}" == '## Prepare for Review' ]]
+}
+
+@test "implementation.md Return to Task 4: the body carries Closes #N, the conclusions go in a comment, no review is requested" {
+  run --separate-stderr section 'Return to Task 4' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  for s in 'as a draft' '`Closes #N`' 'first comment of the PR' 'When the PR is open already' \
+           'requests no review on this PR' 'review it at will' 'dismisses it'; do
+    [[ "$output" == *"$s"* ]]
+  done
+  [[ "$output" != *'gh pr merge --auto'* ]]
+}
+
+@test "Prepare for Review: a PR opened by a return to Task 4 is marked ready, not opened again" {
+  run --separate-stderr section 'Prepare for Review' "$IMPL_MD"
+  [[ -z "$stderr" ]]
+  for s in 'open no other' 'gh pr ready <PR>' 'gh pr edit <PR> --body-file -' 'stay in their comment'; do
+    [[ "$output" == *"$s"* ]]
+  done
+  run --separate-stderr section 'Code Review Request' "$EXEC_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'as a draft'* ]]
+  [[ "$output" == *'gh pr ready <PR>'* ]]
+}
+
+@test "SKILL.md Kanban Task 5 row: the failure PR is a draft; auto-merge and review request for review only" {
+  run --separate-stderr grep -m1 '^  | 5\. Implementation |' "$SKILL_MD"
+  [[ -z "$stderr" ]]
+  [[ "$output" == *'as a draft, with its conclusions'* ]]
+  [[ "$output" == *'for review only'* ]]
+  [[ "$output" == *'stops the Task 4 engineer'* ]]
+}
+
 # --- Change History -------------------------------------------------------
 # | PR     | Summary                                                       |
 # |--------|---------------------------------------------------------------|
