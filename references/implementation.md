@@ -83,7 +83,7 @@ This task covers the start of Task 5, source code implementation, edge-cases tes
     4. **Correction**: the planned correction.
     5. **New placeholders**: which tests become placeholders.
   - **The report.** The engineer then reports `REGRESS-TO-TASK-4 <url>`, the URL of its conclusions. The report is valid only if they are posted, with every required part.
-  - **The conductor's check.** The conductor reads the conclusions in full (`thread.sh get`), and, as needed, the issue thread with the approved plan, never the code. It relays the report to the maintainer, and enables no auto-merge and requests no review on this PR. It **escalates** when any of these holds:
+  - **The conductor's check.** The conductor reads the conclusions in full (`thread.sh get`), and, as needed, the issue thread with the approved plan, never the code. It relays the report to the maintainer, and enables no auto-merge and requests no review on this PR. The maintainer may still review it at will, in its *Files changed* tab: the review is not required, the draft cannot merge, and any later commit dismisses it as a merge condition. It **escalates** when any of these holds:
     - the conclusions lack one of the required parts;
     - the correction changes the approved plan, the issue's scope or its acceptance criteria, rather than tests and documentation within the plan;
     - the correction removes a behaviour that the approved documentation states, or reduces what the tests check;
