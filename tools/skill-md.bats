@@ -368,7 +368,7 @@ TOOLS_MD="$BATS_TEST_DIRNAME/../references/shell-tools.md"
 
 @test "references/shell-tools.md documents every subcommand of thread.sh and board.sh" {
   [[ -f "$TOOLS_MD" ]]
-  for s in '`index <N> -o <file>`' '`read <N> <range> -o <file>`' '`last <N> -o <file>`' '`get <id> -o <file>`' '`post <N>`' '`reply <id>`' \
+  for s in '`index <N> [-o <file>]`' '`read <N> <range> [-o <file>]`' '`last <N> [-o <file>]`' '`get <id> [-o <file>]`' '`post <N>`' '`reply <id>`' \
            '`status <N>`' '`move <N> <from> <to>`' '`check`' '`list <column>`' '`add-pr <PR>`' '**The overflow file.**' '**Nothing is truncated.**'; do
     grep -qF -- "$s" "$TOOLS_MD"
   done
