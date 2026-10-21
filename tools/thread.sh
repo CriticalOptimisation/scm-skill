@@ -7,7 +7,7 @@
 # the skill's references/shell-tools.md. Replaces references/pr-threads.sh.
 #
 # Exit codes: 0 success; 1 error; 2 usage; 3 output written to the overflow
-# file.
+# file, with a report and its line index on stdout (#33).
 set -uo pipefail
 
 readonly E_FAIL=1 E_USAGE=2 E_OVERFLOW=3
@@ -16,15 +16,15 @@ readonly MAX_BYTES=16384
 say() { printf 'thread.sh: %s\n' "$*" >&2; }
 die() { local code=$1; shift; say "$@"; exit "$code"; }
 usage() {
-  die "$E_USAGE" "usage: thread.sh index <N> -o <file> [--max-lines <n>]
-       thread.sh read <N> <range> -o <file> [--max-lines <n>]   range: 5, 5-9, 5-, -3
-       thread.sh last <N> -o <file> [--max-lines <n>]
-       thread.sh get <id> -o <file> [--max-lines <n>]
+  die "$E_USAGE" "usage: thread.sh index <N> [-o <file>] [--max-lines <n>]
+       thread.sh read <N> <range> [-o <file>] [--max-lines <n>]   range: 5, 5-9, 5-, -3
+       thread.sh last <N> [-o <file>] [--max-lines <n>]
+       thread.sh get <id> [-o <file>] [--max-lines <n>]
        thread.sh post <N> <<'SCM_BODY' ... SCM_BODY
        thread.sh reply <id> <<'SCM_BODY' ... SCM_BODY"
 }
 
-TMP=$(mktemp -d) || exit "$E_FAIL"
+TMP=$(mktemp -d 2> /dev/null) || die "$E_FAIL" "cannot create a temporary directory in ${TMPDIR:-/tmp}"
 trap 'rm -rf "$TMP"' EXIT
 
 # Runs gh; prints its stdout. On failure, dies with gh's first stderr line.
@@ -175,30 +175,67 @@ def items:
   | sort_by(.key) | [ .[].list[] ] | to_entries | map(.value + { n: (.key + 1) });
 '
 
-# Prints the content $1 on stdout, or, past the limits, writes it to the
-# overflow file and exits 3.
+# The blocks $1, a JSON array of {id, text}: the output is each text followed
+# by a newline. Prints it on stdout, or, past the limits, writes it to the
+# overflow file (OUT, else a new file in TMPDIR), prints the report with the
+# line range of every block, and exits 3 (#33).
 emit() {
-  local content=$1 lines bytes
-  lines=$(printf '%s\n' "$content" | wc -l)
-  bytes=$(printf '%s\n' "$content" | wc -c)
+  local blocks=$1 content lines bytes file
+  content=$(jq -j '.[] | .text + "\n"' <<< "$blocks" && printf x) || die "$E_FAIL" "cannot format the output"
+  content=${content%x}
+  lines=$(printf '%s' "$content" | wc -l)
+  bytes=$(printf '%s' "$content" | wc -c)
   if (( lines > MAX_LINES || bytes > MAX_BYTES )); then
-    printf '%s\n' "$content" > "$OUT" || die "$E_FAIL" "cannot write $OUT"
-    printf 'overflow %d lines %d bytes -> %s\n' "$lines" "$bytes" "$OUT"
+    file=$OUT
+    if [[ -z $file ]]; then
+      file=$(mktemp "${TMPDIR:-/tmp}/thread.sh.XXXXXX.txt" 2> /dev/null) \
+        || die "$E_FAIL" "cannot create an overflow file in ${TMPDIR:-/tmp}"
+    fi
+    printf '%s' "$content" > "$file" || die "$E_FAIL" "cannot write $file"
+    file=$(realpath -ms -- "$file")
+    printf 'overflow %d lines %d bytes -> %s\n' "$lines" "$bytes" "$file"
+    printf 'read it in parts with your Read tool (offset/limit), using the index below; delete it when done (rm -- %s)\n' "$file"
+    printf 'if the file is missing, stop and report BLOCKED: do not retry\n'
+    printf 'index:\n'
+    jq -r 'foreach .[] as $b ({end: 0}; (.start = .end + 1) | (.end += ($b.text | split("\n") | length)); "\(.start)-\(.end) \($b.id)")' <<< "$blocks"
     exit "$E_OVERFLOW"
   fi
-  if [[ -e $OUT ]]; then
+  if [[ -n $OUT && -f $OUT ]]; then
     rm -f -- "$OUT" || die "$E_FAIL" "cannot remove $OUT"
   fi
-  printf '%s\n' "$content"
+  printf '%s' "$content"
+}
+
+# Refuses, exit 2, an -o file that is not a regular file (a device such as
+# /dev/stdout, even when it leads to a regular file), or that lies in a git
+# work tree and is not ignored by git (#33).
+check_out() {
+  [[ -n $OUT ]] || return 0
+  local abs dir
+  abs=$(realpath -ms -- "$OUT")
+  if [[ -e $OUT && ! -f $OUT ]] || [[ $abs == /dev/* || $abs == /proc/* ]]; then
+    die "$E_USAGE" "-o needs a regular file; omit -o to read the output on stdout"
+  fi
+  dir=${abs%/*}
+  while [[ -n $dir && ! -d $dir ]]; do dir=${dir%/*}; done
+  if [[ $(git -C "${dir:-/}" rev-parse --is-inside-work-tree 2> /dev/null) == true ]]; then
+    git -C "${dir:-/}" check-ignore -q -- "$abs" \
+      || die "$E_USAGE" "-o $OUT is not ignored by git; omit -o or use a path outside the project"
+  fi
+}
+
+# Deletes the default overflow files older than 60 minutes (#33).
+clean() {
+  find "${TMPDIR:-/tmp}" -maxdepth 1 -type f -name 'thread.sh.*.txt' -mmin +60 -delete 2> /dev/null || true
 }
 
 cmd_index() {
   local doc out
   doc=$(fetch_thread "$1") || exit "$E_FAIL"
-  out=$(jq -r "$JQ_LIB"'
-    items[] | header + (if .kind == "inline" or .kind == "reply"
+  out=$(jq "$JQ_LIB"'
+    [ items[] | { id, text: (header + (if .kind == "inline" or .kind == "reply"
       then "\n" + (.body | clean | split("\n") | map(if . == "" then "" else "    " + . end) | join("\n"))
-      else "" end)' <<< "$doc") || die "$E_FAIL" "cannot format thread #$1"
+      else "" end)) } ]' <<< "$doc") || die "$E_FAIL" "cannot format thread #$1"
   emit "$out"
 }
 
@@ -215,8 +252,8 @@ read_slice() {
   (( to == 0 )) && to=$count
   (( from <= count )) || die "$E_FAIL" "no message $from ($count in #$1)"
   (( to <= count )) || die "$E_FAIL" "no message $to ($count in #$1)"
-  out=$(jq -r --argjson a "$from" --argjson b "$to" "$JQ_LIB"'
-    items[] | select(.n >= $a and .n <= $b) | block' <<< "$doc") || die "$E_FAIL" "cannot format thread #$1"
+  out=$(jq --argjson a "$from" --argjson b "$to" "$JQ_LIB"'
+    [ items[] | select(.n >= $a and .n <= $b) | { id, text: block } ]' <<< "$doc") || die "$E_FAIL" "cannot format thread #$1"
   emit "$out"
 }
 
@@ -237,8 +274,9 @@ cmd_get() {
   local id=$1 doc out
   if [[ $id =~ ^[0-9]+$ ]]; then
     doc=$(gh_call api "repos/$OWNER/$NAME/issues/comments/$id") || exit "$E_FAIL"
-    out=$(jq -r "$JQ_LIB"'
-      { n: "-", id: .node_id, date: .created_at, author: (.user | who), kind: "comment", body } | block' <<< "$doc")
+    out=$(jq "$JQ_LIB"'
+      { n: "-", id: .node_id, date: .created_at, author: (.user | who), kind: "comment", body }
+      | [ { id, text: block } ]' <<< "$doc")
   else
     # shellcheck disable=SC2016 # $vars of the GraphQL query, for gh, not the shell
     doc=$(gh_call api graphql -f id="$id" -f query='
@@ -253,7 +291,7 @@ query($id: ID!) {
   }
 }') || exit "$E_FAIL"
     [[ $(jq -r '.data.node // empty | .id' <<< "$doc") != '' ]] || die "$E_FAIL" "no message $id"
-    out=$(jq -r "$JQ_LIB"'
+    out=$(jq "$JQ_LIB"'
       .data.node | . as $m
       | { n: "-", id, author: (.author | who), body,
           date: (.submittedAt // .createdAt),
@@ -262,9 +300,9 @@ query($id: ID!) {
                  elif .__typename == "PullRequestReviewComment" then (if .replyTo then "reply" else "inline" end)
                  else "body" end),
           path, line: (.line // .originalLine) }
-      | if .kind == "inline" or .kind == "reply"
+      | [ { id, text: (if .kind == "inline" or .kind == "reply"
         then "\(.n) \(.id) \(.date[0:10]) \(.author) \(.kind) \(.body | text | length) \(.path):\(.line)\n\(.body | clean)\n"
-        else block end' <<< "$doc")
+        else block end) } ]' <<< "$doc")
   fi
   [[ -n $out ]] || die "$E_FAIL" "cannot format message $id"
   emit "$out"
@@ -322,7 +360,7 @@ main() {
     *) usage ;;
   esac
   case $cmd in
-    index | read | last | get) [[ -n $OUT ]] || usage ;;
+    index | read | last | get) clean; check_out ;;
     *) [[ -z $OUT ]] || usage ;;
   esac
   repo
@@ -347,3 +385,4 @@ return 0
 # |--------|---------------------------------------------------------------|
 # | #30    | new: index, read, last, get, post, reply (#27)                |
 # | #36    | shellcheck directives with their reason (#29)                 |
+# | #37    | -o optional, overflow report + index, -o checks, cleaning (#33)|

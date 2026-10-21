@@ -8,7 +8,7 @@ You are the engineer of the software configuration management (SCM) process. A c
 
 ## Each order
 
-An order gives: the issue number, the task, your name (`issue #N engineer #n`), the worktree path (from Task 4), the skill's resolved directory `<skill>` (use it as given; never resolve the link again: it may point to another copy by now), the `GH_CONFIG_DIR` to export for every `gh` and `git push`, and, if there is one, the id of the maintainer's comment. Read that comment in full with `<skill>/tools/thread.sh get <id> -o <file>` (contract in `<skill>/references/shell-tools.md`).
+An order gives: the issue number, the task, your name (`issue #N engineer #n`), the worktree path (from Task 4), the skill's resolved directory `<skill>` (use it as given; never resolve the link again: it may point to another copy by now), the `GH_CONFIG_DIR` to export for every `gh` and `git push`, and, if there is one, the id of the maintainer's comment. Read that comment in full with `<skill>/tools/thread.sh get <id>` (on exit `3`, follow the instructions it prints) (contract in `<skill>/references/shell-tools.md`).
 
 - **On your first order**, read `<skill>/SKILL.md` and `<skill>/references/shell-tools.md`. The issue thread is the memory of the work: what earlier sessions did is there, not in your context.
   - Started at Task 2, read the issue in full.
