@@ -24,7 +24,7 @@ usage() {
        thread.sh reply <id> <<'SCM_BODY' ... SCM_BODY"
 }
 
-TMP=$(mktemp -d) || exit "$E_FAIL"
+TMP=$(mktemp -d 2> /dev/null) || die "$E_FAIL" "cannot create a temporary directory in ${TMPDIR:-/tmp}"
 trap 'rm -rf "$TMP"' EXIT
 
 # Runs gh; prints its stdout. On failure, dies with gh's first stderr line.

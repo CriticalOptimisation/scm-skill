@@ -30,7 +30,7 @@ index:
 - **The default overflow file**: without `-o`, the script creates it with `mktemp "${TMPDIR:-/tmp}/thread.sh.XXXXXX.txt"`, outside the project. If it cannot: exit `1`, one line on stderr.
 - **Cleaning**: every run of a reading command first deletes the default overflow files (`thread.sh.*.txt` in `${TMPDIR:-/tmp}`) last modified more than 60 minutes ago. No caller needs one for longer. A file named by `-o` is never cleaned.
 - **`-o <file>`** names the overflow file instead. It is checked before any call to GitHub; it is refused, exit `2`, with one line on stderr, when it is
-  - an existing file that is not a regular file, such as `/dev/stdout`: `thread.sh: -o needs a regular file; omit -o to read the output on stdout`;
+  - an existing file that is not a regular file, or a path under `/dev` or `/proc`, such as `/dev/stdout` (even when it leads to a regular file): `thread.sh: -o needs a regular file; omit -o to read the output on stdout`;
   - inside a git work tree and not ignored by git: `thread.sh: -o <file> is not ignored by git; omit -o or use a path outside the project`.
   When the output is short, a regular file left at that path by an earlier run is removed.
 - **A missing overflow file** after exit `3` is a process failure, likely to repeat: the caller stops and reports `BLOCKED`, and does not retry.
