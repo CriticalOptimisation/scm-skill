@@ -385,3 +385,4 @@ return 0
 # |--------|---------------------------------------------------------------|
 # | #30    | new: index, read, last, get, post, reply (#27)                |
 # | #36    | shellcheck directives with their reason (#29)                 |
+# | #37    | -o optional, overflow report + index, -o checks, cleaning (#33)|

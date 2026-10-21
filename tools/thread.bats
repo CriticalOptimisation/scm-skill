@@ -630,3 +630,4 @@ return 0
 # |--------|---------------------------------------------------------------|
 # | #30    | new: thread.sh contract, gh stubbed (#27)                     |
 # | #36    | run ! grep -q; directives with their reason (#29)             |
+# | #37    | optional -o, report and index, -o refusals, cleaning (#33)    |

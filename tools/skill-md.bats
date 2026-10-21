@@ -768,3 +768,4 @@ return 0
 # | #31    | change-history templates per language; add-on templates (#24)|
 # | #34    | engineer stops at end of Task 4; Start of/Return to Task 4 (#32)|
 # | #36    | shellcheck-clean: SC2016 directive, find (#29)                |
+# | #37    | shell-tools.md documents -o as optional (#33)                 |
