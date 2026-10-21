@@ -321,6 +321,123 @@ IC_3' ]]
   [[ -e "$OUT" ]]
 }
 
+# --- -o, the overflow file and cleaning: edge cases (#33) ----------------------
+
+@test "-o /dev/stdout is refused even when stdout is a regular file" {
+  issue_rules
+  # shellcheck disable=SC2016 # $1 and $2 are for the inner bash, not this shell
+  run --separate-stderr bash -c '"$1" index 27 -o /dev/stdout > "$2"' _ "$THREAD" "$BATS_TEST_TMPDIR/redirected.txt"
+  [[ "$status" -eq 2 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'thread.sh: -o needs a regular file; omit -o to read the output on stdout' ]]
+  [[ ! -s "$BATS_TEST_TMPDIR/redirected.txt" ]]
+  [[ ! -s "$GH_STUB_LOG" ]]
+}
+
+@test "-o naming a directory is refused, exit 2, and the directory is kept" {
+  issue_rules
+  mkdir "$BATS_TEST_TMPDIR/dir"
+  run --separate-stderr "$THREAD" get IC_1 -o "$BATS_TEST_TMPDIR/dir"
+  [[ "$status" -eq 2 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == 'thread.sh: -o needs a regular file; omit -o to read the output on stdout' ]]
+  [[ -d "$BATS_TEST_TMPDIR/dir" ]]
+  [[ ! -s "$GH_STUB_LOG" ]]
+}
+
+@test "-o naming a file tracked by git is refused, even if a pattern ignores it" {
+  issue_rules
+  repo="$BATS_TEST_TMPDIR/repo"
+  git init -q "$repo"
+  : > "$repo/out.txt"
+  git -C "$repo" add out.txt
+  printf '/out.txt\n' > "$repo/.gitignore"
+  run --separate-stderr "$THREAD" index 27 -o "$repo/out.txt"
+  [[ "$status" -eq 2 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == "thread.sh: -o $repo/out.txt is not ignored by git; omit -o or use a path outside the project" ]]
+  [[ -e "$repo/out.txt" ]]
+  [[ ! -s "$GH_STUB_LOG" ]]
+}
+
+@test "-o in a directory still to create, inside a git work tree: refused unless ignored" {
+  issue_rules
+  repo="$BATS_TEST_TMPDIR/repo"
+  git init -q "$repo"
+  printf '/scratch/\n' > "$repo/.gitignore"
+  run --separate-stderr "$THREAD" index 27 -o "$repo/new/out.txt"
+  [[ "$status" -eq 2 ]]
+  [[ "$stderr" == "thread.sh: -o $repo/new/out.txt is not ignored by git; omit -o or use a path outside the project" ]]
+  [[ -z "$output" ]]
+  run --separate-stderr "$THREAD" index 27 -o "$repo/scratch/sub/out.txt"
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 0 ]]
+  [[ "$output" == "$ISSUE_INDEX" ]]
+}
+
+@test "a relative -o: the report names the file by its absolute path" {
+  issue_rules
+  cd "$BATS_TEST_TMPDIR"
+  run --separate-stderr "$THREAD" index 27 -o rel.txt --max-lines 2
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 3 ]]
+  check_report "$BATS_TEST_TMPDIR/rel.txt"
+}
+
+@test "an overflow with -o overwrites a longer file left by an earlier run" {
+  issue_rules
+  seq 1 500 > "$OUT"
+  run --separate-stderr "$THREAD" index 27 -o "$OUT" --max-lines 2
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 3 ]]
+  [[ "$(cat "$OUT")" == "$ISSUE_INDEX" ]]
+  check_report "$OUT"
+}
+
+@test "without -o, each overflow gets a file of its own" {
+  issue_rules
+  run --separate-stderr "$THREAD" index 27 --max-lines 2
+  [[ "$status" -eq 3 ]]
+  first=$(sed -n '1s/.* -> //p' <<< "$output")
+  run --separate-stderr "$THREAD" index 27 --max-lines 2
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 3 ]]
+  second=$(sed -n '1s/.* -> //p' <<< "$output")
+  [[ "$first" != "$second" ]]
+  [[ -f "$first" && -f "$second" ]]
+}
+
+@test "last and get overflow: one block, the whole file" {
+  issue_rules
+  run --separate-stderr "$THREAD" last 27 --max-lines 1
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 3 ]]
+  file=$(sed -n '1s/.* -> //p' <<< "$output")
+  check_report "$file"
+  [[ "$(sed -n '5,$p' <<< "$output" | wc -l)" -eq 1 ]]
+  [[ "$(sed -n 5p <<< "$output")" == *" IC_3" ]]
+}
+
+@test "an unusable TMPDIR: exit 1, one line on stderr, nothing on stdout" {
+  issue_rules
+  TMPDIR="$BATS_TEST_TMPDIR/missing" run --separate-stderr "$THREAD" index 27 --max-lines 2
+  [[ "$status" -eq 1 ]]
+  [[ -z "$output" ]]
+  [[ "$stderr" == "thread.sh: cannot create "*"$BATS_TEST_TMPDIR/missing"* ]]
+  [[ "$(wc -l <<< "$stderr")" -eq 1 ]]
+}
+
+@test "cleaning runs without -o too, and leaves subdirectories alone" {
+  issue_rules
+  mkdir "$TMPDIR/sub"
+  touch -d '-61 minutes' "$TMPDIR/thread.sh.old111.txt" "$TMPDIR/sub/thread.sh.deep333.txt"
+  run --separate-stderr "$THREAD" index 27
+  [[ -z "$stderr" ]]
+  [[ "$status" -eq 0 ]]
+  [[ ! -e "$TMPDIR/thread.sh.old111.txt" ]]
+  [[ -e "$TMPDIR/sub/thread.sh.deep333.txt" ]]
+}
+
 @test "a failed page fails the command: one line on stderr, no partial output" {
   rules '*after=C1*|!1 HTTP 502: Bad Gateway' '*issueOrPullRequest*|issue-p1.json'
   run --separate-stderr "$THREAD" index 27 -o "$OUT"
